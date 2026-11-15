@@ -146,8 +146,11 @@
     <h2>Settings</h2>
     <label for="keyInput">Soniox API key (stored only on this phone)</label>
     <input id="keyInput" type="password" autocomplete="off" placeholder="snx_…">
-    <label for="modelInput">Model</label>
+    <label for="modelInput">Model ("auto" = newest Soniox accepts)</label>
     <input id="modelInput" autocomplete="off">
+    <label for="termsInput">Names &amp; words to listen for (comma-separated, both spellings help: Sveta, Света)</label>
+    <input id="termsInput" autocomplete="off" placeholder="Sveta, Света, Bishkek, …">
+    <p class="note" id="cfgNote"></p>
     <label for="anthKeyInput">Claude API key — for Russian summaries (stored only on this phone)</label>
     <input id="anthKeyInput" type="password" autocomplete="off" placeholder="sk-ant-…">
     <label for="anthModelInput">Summary model</label>
@@ -208,7 +211,9 @@
 
   // ---------- state ----------
   let apiKey   = store.get("sl.key", "");
-  let model    = store.get("sl.model", "stt-rt-v5");
+  let model    = store.get("sl.model2", "auto");     // auto = newest model Soniox accepts
+  let extraTerms = store.get("sl.terms", "");         // names/words to help recognition (kept on this phone)
+  let cfgLevel = 0, activeCfg = "";
   let fontSize = store.get("sl.fs", 20);
   let knownNames = store.get("sl.names", []);
   let showRu   = store.get("sl.ru", true);
@@ -333,21 +338,23 @@
       if (t.text === "<end>" || t.text === "<fin>") continue;
       const spk = t.speaker != null ? String(t.speaker) : (lastSpeaker || "1");
       const status = t.translation_status || "none";
+      const isEn = String(t.language || "").toLowerCase().startsWith("en");
       if (t.is_final) {
         if (status === "translation") {
-          const b = blockForTranslation(spk); b.en += t.text; dirty.add(b);
+          const b = blockForTranslation(spk);
+          if (isEn) b.en += t.text; else b.ru += t.text;
+          dirty.add(b);
         } else {
           lastSpeaker = spk;
           trackTiming(t, spk);
           const b = currentBlockFor(spk);
-          if (status === "original") b.ru += t.text; else b.en += t.text;
+          if (!b.src) b.src = isEn ? "en" : "ru";
+          if (isEn) b.en += t.text; else b.ru += t.text;
           dirty.add(b);
         }
       } else {
         if (status !== "translation") pendSpk = spk;
-        if (status === "translation") pendEn += t.text;
-        else if (status === "original") pendRu += t.text;
-        else pendEn += t.text;
+        if (isEn) pendEn += t.text; else pendRu += t.text;
       }
     }
     dirty.forEach(b => { paint(b); maybeSpeak(b); });
@@ -359,6 +366,7 @@
   // ---------- speech output ----------
   function maybeSpeak(b){
     if (!listenOn || !("speechSynthesis" in window)) return;
+    if (b.src === "en") return;            // you already understood it
     const text = b.en;
     const rest = text.slice(b.spoken);
     const m = rest.match(/^[\s\S]*[.!?…](\s|$)/);
@@ -411,10 +419,12 @@
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: true }
     });
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const AC = window.AudioContext || window.webkitAudioContext;
+    // a 16 kHz context lets the browser do proper resampling; fall back to the device rate if refused
+    try { audioCtx = new AC({ sampleRate: TARGET_RATE }); source = audioCtx.createMediaStreamSource(stream); }
+    catch (e) { try { audioCtx && audioCtx.close(); } catch(_){} audioCtx = new AC(); source = audioCtx.createMediaStreamSource(stream); }
     await audioCtx.resume();
     ratio = Math.max(1, Math.round(audioCtx.sampleRate / TARGET_RATE));
-    source = audioCtx.createMediaStreamSource(stream);
     if (audioCtx.audioWorklet) {
       const url = URL.createObjectURL(new Blob([workletSrc], { type: "application/javascript" }));
       await audioCtx.audioWorklet.addModule(url);
@@ -441,6 +451,47 @@
   }
 
   // ---------- Soniox connection ----------
+  // Newest/richest settings first; if Soniox rejects something, fall back one step.
+  function ladder(){
+    const models = model === "auto" ? ["stt-rt-v6", "stt-rt-v5"] : [model];
+    const steps = [];
+    for (const m of models) steps.push({ model: m, rich: true });
+    steps.push({ model: models[models.length - 1], rich: false });
+    return steps;
+  }
+  function buildContext(){
+    const people = Array.from(new Set(knownNames.concat(Object.values(names)))).filter(Boolean);
+    const terms = Array.from(new Set(people.concat(extraTerms.split(",").map(s => s.trim()).filter(Boolean))));
+    const general = [
+      { key: "domain", value: "Family conversation at home" },
+      { key: "setting", value: "Relatives talking around a table in Bishkek, Kyrgyzstan; several people, sometimes overlapping" },
+      { key: "languages", value: "Mostly Russian, some English" }
+    ];
+    if (people.length) general.push({ key: "participants", value: people.join(", ") });
+    const ctx = { general };
+    if (terms.length) ctx.terms = terms.slice(0, 100);
+    return ctx;
+  }
+  function buildConfig(step){
+    const cfg = {
+      api_key: apiKey,
+      model: step.model,
+      audio_format: "pcm_s16le",
+      sample_rate: TARGET_RATE,
+      num_channels: 1,
+      language_hints: ["ru", "en"],
+      enable_language_identification: true,
+      enable_speaker_diarization: true,
+      translation: { type: "one_way", target_language: "en" }
+    };
+    if (step.rich) {
+      cfg.context = buildContext();
+      // English speech gets a Russian line too (split view, learning); Russian gets English as before
+      cfg.translation = { type: "two_way", language_a: "ru", language_b: "en" };
+    }
+    return cfg;
+  }
+
   function connect(){
     return new Promise((resolve, reject) => {
       const sock = new WebSocket(WS_URL + "?api_key=" + encodeURIComponent(apiKey));
@@ -448,27 +499,26 @@
       let opened = false;
       sock.onopen = () => {
         opened = true;
-        sock.send(JSON.stringify({
-          api_key: apiKey,
-          model: model,
-          audio_format: "pcm_s16le",
-          sample_rate: TARGET_RATE,
-          num_channels: 1,
-          language_hints: ["ru", "en"],
-          enable_language_identification: true,
-          enable_speaker_diarization: true,
-          translation: { type: "one_way", target_language: "en" }
-        }));
+        const steps = ladder(); cfgLevel = Math.min(cfgLevel, steps.length - 1);
+        const step = steps[cfgLevel];
+        sock.send(JSON.stringify(buildConfig(step)));
+        activeCfg = step.model + (step.rich ? " + context + two-way translation" : " (basic settings)");
         resolve(sock);
       };
       sock.onmessage = e => {
         let msg; try { msg = JSON.parse(e.data); } catch(_) { return; }
         if (msg.error_code || msg.error_message) {
+          if (!sock.gotTokens && cfgLevel < ladder().length - 1) {
+            cfgLevel++;
+            ws = null; try { sock.close(); } catch(_){}
+            connect().then(s => { ws = s; }).catch(() => { divider("Couldn't reconnect to Soniox."); });
+            return;
+          }
           setStatus("Error", false);
           divider("Soniox error: " + (msg.error_message || msg.error_code));
           return;
         }
-        if (msg.tokens) handleTokens(msg.tokens);
+        if (msg.tokens) { if (msg.tokens.length) sock.gotTokens = true; handleTokens(msg.tokens); }
         if (msg.finished) { try { sock.close(); } catch(_){} }
       };
       sock.onerror = () => { if (!opened) reject(new Error("Could not connect to Soniox")); };
@@ -922,15 +972,18 @@
 
   // ---------- settings ----------
   function openSettings(){
-    $("keyInput").value = apiKey; $("modelInput").value = model;
+    $("keyInput").value = apiKey; $("modelInput").value = model; $("termsInput").value = extraTerms;
+    $("cfgNote").textContent = activeCfg ? "Last session used: " + activeCfg : "";
     $("anthKeyInput").value = anthKey; $("anthModelInput").value = anthModel;
     $("costNote").textContent = "Listening time so far: " + (secondsUsed / 3600).toFixed(2) + " h (≈ $" + (secondsUsed / 3600 * 0.12).toFixed(2) + " at $0.12/h).";
     $("setSheet").classList.add("open");
   }
   $("settingsBtn").addEventListener("click", openSettings);
   $("setSave").addEventListener("click", () => {
-    apiKey = $("keyInput").value.trim(); model = $("modelInput").value.trim() || "stt-rt-v5";
-    store.set("sl.key", apiKey); store.set("sl.model", model);
+    apiKey = $("keyInput").value.trim(); model = $("modelInput").value.trim() || "auto";
+    extraTerms = $("termsInput").value.trim();
+    store.set("sl.key", apiKey); store.set("sl.model2", model); store.set("sl.terms", extraTerms);
+    cfgLevel = 0;
     anthKey = $("anthKeyInput").value.trim(); anthModel = $("anthModelInput").value.trim() || "claude-sonnet-5-5";
     store.set("sl.anthKey", anthKey); store.set("sl.anthModel", anthModel);
     $("setSheet").classList.remove("open");
