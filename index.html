@@ -65,6 +65,14 @@
   .voice-row small{color:var(--muted)}
   #sumBtn{position:fixed;right:12px;bottom:calc(118px + env(safe-area-inset-bottom));z-index:5;
     background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;border-radius:999px;padding:10px 16px;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+  body.selecting .block{cursor:pointer;border-left:3px solid var(--line);padding-left:9px;margin-left:-12px}
+  body.selecting .block.sel{border-left-color:var(--accent);background:#4fa3ff1f}
+  body.selecting #live, body.selecting #sumBtn{display:none}
+  #selBar{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));display:none;flex-wrap:wrap;gap:8px;
+    padding:10px 12px;background:var(--panel);border-top:1px solid var(--line);z-index:6}
+  body.selecting #selBar{display:flex}
+  #selBar .hint{width:100%;font-size:13px;color:var(--muted)}
+  #selBar button{flex:1}
   #sumText{font-size:calc(var(--fs) * 1.15);line-height:1.45;white-space:pre-wrap;margin:6px 0 4px;min-height:2em}
   #sumMeta{font-size:12px;color:var(--muted)}
   #empty{color:var(--muted);text-align:center;margin-top:30vh;line-height:1.5;padding:0 20px}
@@ -83,12 +91,19 @@
 </div>
 <div id="live"></div>
 <button id="sumBtn">Лёше 🇷🇺</button>
+<div id="selBar">
+  <div class="hint">Tap the turns to summarize for Лёша. Tap the first and last, then “Fill gaps” to grab everything between.</div>
+  <button id="selFill">Fill gaps</button>
+  <button id="selGo" class="on">Since last</button>
+  <button id="selCancel">Cancel</button>
+</div>
 
 <!-- Russian summary sheet -->
 <div class="sheet" id="sumSheet">
   <div class="card">
     <h2>Кратко для Лёши</h2>
     <div class="row chips">
+      <button id="sumSel" style="display:none">Selected</button>
       <button id="sumNew" class="on">Since last summary</button>
       <button id="sum5">Last 5 min</button>
       <button id="sumAll">Whole session</button>
@@ -200,6 +215,7 @@
   let anthKey  = store.get("sl.anthKey", "");
   let anthModel = store.get("sl.anthModel", "claude-sonnet-5-5");
   let lastSummaryAt = 0;
+  let selecting = false; const selected = new Set(); let selSnapshot = [];
   let voiceOn  = store.get("sl.voiceOn2", false);   // off by default: on-device matching proved unreliable in real rooms
   let strict   = store.get("sl.strict2", 0.90);   // v2.1: stricter default (0.86 guessed too often in real rooms)
   let profiles = store.get("sl.voices", {});   // name -> { embs: [[512 floats]], updated }
@@ -253,6 +269,12 @@
     const b = { speaker, en:"", ru:"", el, enEl, ruEl, whoEl, okEl, pairsEl, spoken:0, t: Date.now(), tEnd: Date.now() };
     whoEl.addEventListener("click", () => openRename(b.speaker));
     okEl.addEventListener("click", () => confirmVoice(b.speaker));
+    el.addEventListener("click", e => {
+      if (!selecting) return;
+      e.stopPropagation(); e.preventDefault();
+      if (selected.has(b)) selected.delete(b); else selected.add(b);
+      el.classList.toggle("sel", selected.has(b)); updateSelBar();
+    }, true);
     paintWho(b);
     main.appendChild(el);
     blocks.push(b);
@@ -555,8 +577,9 @@
   }
   async function makeSummary(){
     if (!anthKey) { $("sumText").textContent = "Add your Claude API key in Settings (⚙︎) first."; return; }
-    const since = sumScope === "new" ? lastSummaryAt : sumScope === "5" ? Date.now() - 5 * 60000 : 0;
-    let text = transcriptSince(since);
+    let text;
+    if (sumScope === "sel") text = selSnapshot.filter(b => b.en.trim()).map(b => speakerName(b.speaker) + ": " + b.en.trim()).join("\n");
+    else text = transcriptSince(sumScope === "new" ? lastSummaryAt : sumScope === "5" ? Date.now() - 5 * 60000 : 0);
     if (!text) { $("sumText").textContent = "Nothing new to summarize yet."; $("sumMeta").textContent = ""; return; }
     if (text.length > 16000) text = text.slice(-16000);
     $("sumText").textContent = "…"; $("sumMeta").textContent = "Asking Claude…";
@@ -580,7 +603,7 @@
       const out = (data.content || []).filter(c => c.type === "text").map(c => c.text).join("").trim();
       lastSummaryText = out || "(empty reply)";
       $("sumText").textContent = lastSummaryText;
-      lastSummaryAt = started;
+      if (sumScope !== "sel") lastSummaryAt = started;
       $("sumMeta").textContent = "Covers " + text.split("\n").length + " turns · " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     } catch (e) {
       $("sumText").textContent = "Couldn't get a summary: " + (e && e.message ? e.message : e);
@@ -589,9 +612,40 @@
   }
   function setScope(s){
     sumScope = s;
-    [["new","sumNew"],["5","sum5"],["all","sumAll"]].forEach(([k,id]) => $(id).classList.toggle("on", k === s));
+    [["sel","sumSel"],["new","sumNew"],["5","sum5"],["all","sumAll"]].forEach(([k,id]) => $(id).classList.toggle("on", k === s));
+    $("sumSel").style.display = selSnapshot.length ? "" : "none";
   }
-  $("sumBtn").addEventListener("click", () => { setScope("new"); $("sumSheet").classList.add("open"); makeSummary(); });
+  function inOrder(set){ return blocks.filter(b => set.has(b)); }
+  function updateSelBar(){
+    const n = selected.size;
+    $("selGo").textContent = n ? "Summarize " + n + (n === 1 ? " turn" : " turns") : "Since last";
+    $("selFill").disabled = n < 2;
+  }
+  function startSelecting(){
+    selecting = true; selected.clear();
+    blocks.forEach(b => b.el.classList.remove("sel"));
+    document.body.classList.add("selecting"); updateSelBar();
+  }
+  function stopSelecting(){
+    selecting = false; selected.clear();
+    blocks.forEach(b => b.el.classList.remove("sel"));
+    document.body.classList.remove("selecting");
+  }
+  $("sumBtn").addEventListener("click", startSelecting);
+  $("selCancel").addEventListener("click", stopSelecting);
+  $("selFill").addEventListener("click", () => {
+    const idx = inOrder(selected).map(b => blocks.indexOf(b));
+    if (idx.length < 2) return;
+    for (let i = idx[0]; i <= idx[idx.length - 1]; i++) { selected.add(blocks[i]); blocks[i].el.classList.add("sel"); }
+    updateSelBar();
+  });
+  $("selGo").addEventListener("click", () => {
+    selSnapshot = inOrder(selected);
+    stopSelecting();
+    setScope(selSnapshot.length ? "sel" : "new");
+    $("sumSheet").classList.add("open"); makeSummary();
+  });
+  $("sumSel").addEventListener("click", () => { setScope("sel"); makeSummary(); });
   $("sumNew").addEventListener("click", () => { setScope("new"); makeSummary(); });
   $("sum5").addEventListener("click", () => { setScope("5"); makeSummary(); });
   $("sumAll").addEventListener("click", () => { setScope("all"); makeSummary(); });
