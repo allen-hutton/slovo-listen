@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Slovo Listen">
+<title>Slovo Listen</title>
+<style>
+  :root{
+    --bg:#101214; --panel:#1a1d21; --line:#2a2e34; --text:#e9ecef; --muted:#8b939c;
+    --accent:#4fa3ff; --rec:#ff5a5f; --ok:#3ecf8e; --fs:20px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+  body{display:flex;flex-direction:column;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+  header h1{font-size:17px;margin:0;flex:1;font-weight:600}
+  #status{font-size:13px;color:var(--muted)}
+  #status.live{color:var(--rec)}
+  button{font:inherit;color:var(--text);background:#262a30;border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+  button:active{opacity:.7}
+  button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  #main{flex:1;overflow-y:auto;padding:12px 14px 140px;-webkit-overflow-scrolling:touch}
+  .block{margin:0 0 16px}
+  .who{display:inline-block;font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;margin-bottom:4px;cursor:pointer;user-select:none}
+  .en{font-size:var(--fs);line-height:1.35}
+  .ru{font-size:calc(var(--fs) * .72);line-height:1.35;color:var(--muted);margin-top:3px}
+  body.hide-ru .ru{display:none}
+  .pending{opacity:.55}
+  .divider{text-align:center;color:var(--muted);font-size:12px;margin:14px 0}
+  #live{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));padding:8px 14px;
+    background:linear-gradient(transparent,var(--bg) 30%);font-size:calc(var(--fs) * .85);color:var(--muted);min-height:20px}
+  footer{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+    background:var(--panel);border-top:1px solid var(--line)}
+  footer button{flex:1;padding:12px 6px}
+  #startBtn{flex:1.6;font-weight:600;background:var(--ok);border-color:var(--ok);color:#06210f}
+  #startBtn.live{background:var(--rec);border-color:var(--rec);color:#fff}
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:10}
+  .sheet.open{display:flex}
+  .sheet .card{background:var(--panel);width:100%;border-radius:16px 16px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom));
+    max-height:85vh;overflow-y:auto}
+  .card h2{margin:0 0 10px;font-size:17px}
+  .card label{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
+  .card input{width:100%;font:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0d0f11;color:var(--text)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .chips button{padding:6px 12px;border-radius:999px}
+  .note{font-size:13px;color:var(--muted);line-height:1.4;margin-top:10px}
+  #empty{color:var(--muted);text-align:center;margin-top:30vh;line-height:1.5;padding:0 20px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Slovo Listen</h1>
+  <span id="status">Idle</span>
+  <button id="settingsBtn" aria-label="Settings">⚙︎</button>
+</header>
+
+<div id="main">
+  <div id="empty">Put the phone in the middle of the table and tap <b>Start</b>.<br>Tap a speaker's name to label them.</div>
+</div>
+<div id="live"></div>
+
+<footer>
+  <button id="startBtn">Start</button>
+  <button id="listenBtn">🔈 Listen</button>
+  <button id="ruBtn" class="on">RU</button>
+  <button id="moreBtn">⋯</button>
+</footer>
+
+<!-- Rename sheet -->
+<div class="sheet" id="nameSheet">
+  <div class="card">
+    <h2 id="nameTitle">Who is this?</h2>
+    <input id="nameInput" placeholder="Name (e.g. Mom)" autocomplete="off">
+    <div class="row chips" id="knownNames"></div>
+    <div class="row">
+      <button id="nameSave" class="on" style="flex:1">Save</button>
+      <button id="nameCancel" style="flex:1">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings sheet -->
+<div class="sheet" id="setSheet">
+  <div class="card">
+    <h2>Settings</h2>
+    <label for="keyInput">Soniox API key (stored only on this phone)</label>
+    <input id="keyInput" type="password" autocomplete="off" placeholder="snx_…">
+    <label for="modelInput">Model</label>
+    <input id="modelInput" autocomplete="off">
+    <label>Text size</label>
+    <div class="row">
+      <button id="fsDown" style="flex:1">A−</button>
+      <button id="fsUp" style="flex:1">A+</button>
+    </div>
+    <div class="row">
+      <button id="setSave" class="on" style="flex:1">Save</button>
+      <button id="setClose" style="flex:1">Close</button>
+    </div>
+    <p class="note">Keep the screen on and this page open while listening — iPhone stops the microphone when the phone locks or you switch apps. Plug the USB‑C mic in <i>before</i> tapping Start.</p>
+    <p class="note" id="costNote"></p>
+  </div>
+</div>
+
+<!-- More sheet -->
+<div class="sheet" id="moreSheet">
+  <div class="card">
+    <h2>Transcript</h2>
+    <div class="row">
+      <button id="copyBtn" style="flex:1">Copy transcript</button>
+      <button id="clearBtn" style="flex:1">Clear</button>
+    </div>
+    <div class="row"><button id="moreClose" style="flex:1">Close</button></div>
+    <p class="note" id="copyNote"></p>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const WS_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
+  const TARGET_RATE = 16000;
+  const COLORS = ["#4fa3ff","#ffb347","#3ecf8e","#ff7eb6","#b39cff","#5ad1d1","#ffd166","#ff8a65"];
+
+  // ---------- storage helpers (may throw in some contexts) ----------
+  const store = {
+    get(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
+    set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  };
+
+  // ---------- state ----------
+  let apiKey   = store.get("sl.key", "");
+  let model    = store.get("sl.model", "stt-rt-v5");
+  let fontSize = store.get("sl.fs", 20);
+  let knownNames = store.get("sl.names", []);
+  let showRu   = store.get("sl.ru", true);
+
+  let running = false, ws = null, audioCtx = null, stream = null, node = null, source = null;
+  let wakeLock = null, startedAt = 0, secondsUsed = store.get("sl.secs", 0), tick = null;
+  let reconnecting = false;
+
+  const blocks = [];          // {speaker, en, ru, el, enEl, ruEl, whoEl, spoken}
+  let names = {};             // session: speaker number -> name
+  let lastSpeaker = null;
+  let listenOn = false, lastSpokenSpeaker = null;
+
+  // ---------- DOM ----------
+  const $ = id => document.getElementById(id);
+  const main = $("main"), live = $("live"), statusEl = $("status");
+  document.documentElement.style.setProperty("--fs", fontSize + "px");
+  document.body.classList.toggle("hide-ru", !showRu);
+  $("ruBtn").classList.toggle("on", showRu);
+
+  function setStatus(t, isLive){ statusEl.textContent = t; statusEl.classList.toggle("live", !!isLive); }
+
+  function speakerName(s){ return names[s] || ("Speaker " + s); }
+  function speakerColor(s){ const n = parseInt(s, 10); return COLORS[(isNaN(n) ? 0 : n - 1) % COLORS.length]; }
+
+  let stickToBottom = true;
+  main.addEventListener("scroll", () => {
+    stickToBottom = main.scrollHeight - main.scrollTop - main.clientHeight < 80;
+  });
+  function scrollDown(){ if (stickToBottom) main.scrollTop = main.scrollHeight; }
+
+  function newBlock(speaker){
+    const empty = $("empty"); if (empty) empty.remove();
+    const el = document.createElement("div"); el.className = "block";
+    const whoEl = document.createElement("span"); whoEl.className = "who";
+    const enEl = document.createElement("div"); enEl.className = "en";
+    const ruEl = document.createElement("div"); ruEl.className = "ru";
+    el.append(whoEl, enEl, ruEl);
+    const b = { speaker, en:"", ru:"", el, enEl, ruEl, whoEl, spoken:0 };
+    whoEl.addEventListener("click", () => openRename(b.speaker));
+    paintWho(b);
+    main.appendChild(el);
+    blocks.push(b);
+    return b;
+  }
+  function paintWho(b){
+    b.whoEl.textContent = speakerName(b.speaker);
+    const c = speakerColor(b.speaker);
+    b.whoEl.style.background = c + "33"; b.whoEl.style.color = c;
+  }
+  function paint(b){ b.enEl.textContent = b.en.trim(); b.ruEl.textContent = b.ru.trim(); }
+
+  function divider(text){
+    const d = document.createElement("div"); d.className = "divider"; d.textContent = text;
+    main.appendChild(d); scrollDown();
+  }
+
+  // ---------- token handling ----------
+  function currentBlockFor(speaker){
+    const last = blocks[blocks.length - 1];
+    if (last && last.speaker === speaker && !last.closed) return last;
+    return newBlock(speaker);
+  }
+  function blockForTranslation(speaker){
+    for (let i = blocks.length - 1; i >= 0 && i >= blocks.length - 6; i--) {
+      if (blocks[i].closed) break;
+      if (blocks[i].speaker === speaker) return blocks[i];
+    }
+    return blocks[blocks.length - 1] || newBlock(speaker);
+  }
+
+  function handleTokens(tokens){
+    const dirty = new Set();
+    let pendEn = "", pendRu = "", pendSpk = null;
+    for (const t of tokens) {
+      if (!t.text) continue;
+      if (t.text === "<end>" || t.text === "<fin>") continue;
+      const spk = t.speaker != null ? String(t.speaker) : (lastSpeaker || "1");
+      const status = t.translation_status || "none";
+      if (t.is_final) {
+        if (status === "translation") {
+          const b = blockForTranslation(spk); b.en += t.text; dirty.add(b);
+        } else {
+          lastSpeaker = spk;
+          const b = currentBlockFor(spk);
+          if (status === "original") b.ru += t.text; else b.en += t.text;
+          dirty.add(b);
+        }
+      } else {
+        if (status !== "translation") pendSpk = spk;
+        if (status === "translation") pendEn += t.text;
+        else if (status === "original") pendRu += t.text;
+        else pendEn += t.text;
+      }
+    }
+    dirty.forEach(b => { paint(b); maybeSpeak(b); });
+    const p = (pendEn || pendRu).trim();
+    live.textContent = p ? (speakerName(pendSpk || lastSpeaker || "1") + ": " + p) : "";
+    if (dirty.size) scrollDown();
+  }
+
+  // ---------- speech output ----------
+  function maybeSpeak(b){
+    if (!listenOn || !("speechSynthesis" in window)) return;
+    const text = b.en;
+    const rest = text.slice(b.spoken);
+    const m = rest.match(/^[\s\S]*[.!?…](\s|$)/);
+    if (!m) return;
+    const chunk = m[0].trim();
+    b.spoken += m[0].length;
+    if (!chunk) return;
+    // skip backlog: if speech is falling behind, drop what's queued and say the newest
+    if (speechSynthesis.pending || speechSynthesis.speaking) {
+      if (speechSynthesis.pending) speechSynthesis.cancel();
+    }
+    const prefix = (b.speaker !== lastSpokenSpeaker) ? speakerName(b.speaker) + ": " : "";
+    lastSpokenSpeaker = b.speaker;
+    const u = new SpeechSynthesisUtterance(prefix + chunk);
+    u.lang = "en-US"; u.rate = 1.08;
+    speechSynthesis.speak(u);
+  }
+
+  // ---------- audio capture ----------
+  const workletSrc = `
+    class Grab extends AudioWorkletProcessor {
+      process(inputs){ const ch = inputs[0] && inputs[0][0]; if (ch) this.port.postMessage(ch.slice(0)); return true; }
+    }
+    registerProcessor("grab", Grab);`;
+
+  let resampleBuf = [], ratio = 3, sendBuf = [], sendLen = 0;
+  function onAudio(f32){
+    // simple averaging downsampler to 16 kHz
+    const out = new Int16Array(Math.floor((resampleBuf.length + f32.length) / ratio));
+    let all;
+    if (resampleBuf.length) { all = new Float32Array(resampleBuf.length + f32.length); all.set(resampleBuf); all.set(f32, resampleBuf.length); }
+    else all = f32;
+    let o = 0, i = 0;
+    for (; i + ratio <= all.length; i += ratio) {
+      let s = 0; for (let k = 0; k < ratio; k++) s += all[i + k];
+      s /= ratio; s = Math.max(-1, Math.min(1, s));
+      out[o++] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
+    resampleBuf = Array.from(all.subarray(i));
+    sendBuf.push(out.subarray(0, o)); sendLen += o;
+    if (sendLen >= TARGET_RATE / 10) {           // ~100 ms per packet
+      const pkt = new Int16Array(sendLen); let p = 0;
+      for (const b of sendBuf) { pkt.set(b, p); p += b.length; }
+      sendBuf = []; sendLen = 0;
+      if (ws && ws.readyState === 1) ws.send(pkt.buffer);
+    }
+  }
+
+  async function startAudio(){
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: true }
+    });
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    await audioCtx.resume();
+    ratio = Math.max(1, Math.round(audioCtx.sampleRate / TARGET_RATE));
+    source = audioCtx.createMediaStreamSource(stream);
+    if (audioCtx.audioWorklet) {
+      const url = URL.createObjectURL(new Blob([workletSrc], { type: "application/javascript" }));
+      await audioCtx.audioWorklet.addModule(url);
+      node = new AudioWorkletNode(audioCtx, "grab");
+      node.port.onmessage = e => onAudio(e.data);
+      source.connect(node);
+      // keep graph alive without audible output
+      const mute = audioCtx.createGain(); mute.gain.value = 0; node.connect(mute); mute.connect(audioCtx.destination);
+    } else {
+      node = audioCtx.createScriptProcessor(4096, 1, 1);
+      node.onaudioprocess = e => onAudio(new Float32Array(e.inputBuffer.getChannelData(0)));
+      source.connect(node); node.connect(audioCtx.destination);
+    }
+    const track = stream.getAudioTracks()[0];
+    return track ? track.label : "";
+  }
+
+  function stopAudio(){
+    try { node && node.disconnect(); } catch(e){}
+    try { source && source.disconnect(); } catch(e){}
+    try { stream && stream.getTracks().forEach(t => t.stop()); } catch(e){}
+    try { audioCtx && audioCtx.close(); } catch(e){}
+    node = source = stream = audioCtx = null; resampleBuf = []; sendBuf = []; sendLen = 0;
+  }
+
+  // ---------- Soniox connection ----------
+  function connect(){
+    return new Promise((resolve, reject) => {
+      const sock = new WebSocket(WS_URL + "?api_key=" + encodeURIComponent(apiKey));
+      sock.binaryType = "arraybuffer";
+      let opened = false;
+      sock.onopen = () => {
+        opened = true;
+        sock.send(JSON.stringify({
+          api_key: apiKey,
+          model: model,
+          audio_format: "pcm_s16le",
+          sample_rate: TARGET_RATE,
+          num_channels: 1,
+          language_hints: ["ru", "en"],
+          enable_language_identification: true,
+          enable_speaker_diarization: true,
+          translation: { type: "one_way", target_language: "en" }
+        }));
+        resolve(sock);
+      };
+      sock.onmessage = e => {
+        let msg; try { msg = JSON.parse(e.data); } catch(_) { return; }
+        if (msg.error_code || msg.error_message) {
+          setStatus("Error", false);
+          divider("Soniox error: " + (msg.error_message || msg.error_code));
+          return;
+        }
+        if (msg.tokens) handleTokens(msg.tokens);
+        if (msg.finished) { try { sock.close(); } catch(_){} }
+      };
+      sock.onerror = () => { if (!opened) reject(new Error("Could not connect to Soniox")); };
+      sock.onclose = () => {
+        if (ws !== sock) return;
+        ws = null;
+        if (running && !reconnecting) reconnect();
+      };
+    });
+  }
+
+  async function reconnect(){
+    reconnecting = true;
+    setStatus("Reconnecting…", false);
+    for (let attempt = 0; running && attempt < 20; attempt++) {
+      await new Promise(r => setTimeout(r, Math.min(1000 * (attempt + 1), 5000)));
+      try {
+        ws = await connect();
+        closeAllBlocks();
+        names = {}; lastSpeaker = null;
+        divider("— reconnected · speaker labels reset —");
+        setStatus("Listening", true);
+        reconnecting = false;
+        return;
+      } catch(e){}
+    }
+    reconnecting = false;
+    if (running) { divider("Connection lost. Tap Start to try again."); stop(); }
+  }
+
+  function closeAllBlocks(){ blocks.forEach(b => b.closed = true); }
+
+  // ---------- start / stop ----------
+  async function start(){
+    if (!apiKey) { openSettings(); return; }
+    $("startBtn").disabled = true; setStatus("Starting…");
+    try {
+      const label = await startAudio();
+      ws = await connect();
+      running = true;
+      if (blocks.length) { closeAllBlocks(); divider("— new session · " + new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) + " —"); }
+      names = {}; lastSpeaker = null;
+      if (label) divider("Mic: " + label);
+      $("startBtn").textContent = "Stop"; $("startBtn").classList.add("live");
+      setStatus("Listening", true);
+      startedAt = Date.now();
+      tick = setInterval(() => { secondsUsed += 1; if (secondsUsed % 15 === 0) store.set("sl.secs", secondsUsed); }, 1000);
+      requestWake();
+    } catch (e) {
+      stopAudio();
+      setStatus("Idle");
+      divider("Couldn't start: " + (e && e.message ? e.message : e));
+    } finally {
+      $("startBtn").disabled = false;
+    }
+  }
+
+  function stop(){
+    running = false;
+    if (ws) {
+      const sock = ws; ws = null;
+      try { sock.send(""); } catch(e){}
+      setTimeout(() => { try { sock.close(); } catch(e){} }, 3000);
+    }
+    stopAudio();
+    clearInterval(tick); store.set("sl.secs", secondsUsed);
+    releaseWake();
+    live.textContent = "";
+    $("startBtn").textContent = "Start"; $("startBtn").classList.remove("live");
+    setStatus("Idle");
+  }
+
+  // ---------- keep screen awake ----------
+  async function requestWake(){
+    try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch(e){}
+  }
+  function releaseWake(){ try { wakeLock && wakeLock.release(); } catch(e){} wakeLock = null; }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && running) {
+      requestWake();
+      // iOS may have killed the mic while hidden
+      const tr = stream && stream.getAudioTracks()[0];
+      if (!tr || tr.readyState === "ended" || (audioCtx && audioCtx.state !== "running")) {
+        divider("Mic was paused while the screen was off — restarting.");
+        stop(); start();
+      }
+    }
+  });
+
+  // ---------- rename ----------
+  let renaming = null;
+  function openRename(spk){
+    renaming = spk;
+    $("nameTitle").textContent = "Who is " + speakerName(spk) + "?";
+    $("nameInput").value = names[spk] || "";
+    const wrap = $("knownNames"); wrap.innerHTML = "";
+    knownNames.forEach(n => {
+      const b = document.createElement("button"); b.textContent = n;
+      b.addEventListener("click", () => applyName(n));
+      wrap.appendChild(b);
+    });
+    $("nameSheet").classList.add("open");
+  }
+  function applyName(n){
+    n = (n || "").trim();
+    if (renaming == null) return;
+    if (n) {
+      names[renaming] = n;
+      if (!knownNames.includes(n)) { knownNames.push(n); knownNames = knownNames.slice(-16); store.set("sl.names", knownNames); }
+    } else delete names[renaming];
+    blocks.forEach(b => { if (!b.closed && b.speaker === renaming) paintWho(b); });
+    $("nameSheet").classList.remove("open"); renaming = null;
+  }
+  $("nameSave").addEventListener("click", () => applyName($("nameInput").value));
+  $("nameCancel").addEventListener("click", () => { $("nameSheet").classList.remove("open"); renaming = null; });
+  $("nameInput").addEventListener("keydown", e => { if (e.key === "Enter") applyName($("nameInput").value); });
+
+  // ---------- settings ----------
+  function openSettings(){
+    $("keyInput").value = apiKey; $("modelInput").value = model;
+    $("costNote").textContent = "Listening time so far: " + (secondsUsed / 3600).toFixed(2) + " h (≈ $" + (secondsUsed / 3600 * 0.12).toFixed(2) + " at $0.12/h).";
+    $("setSheet").classList.add("open");
+  }
+  $("settingsBtn").addEventListener("click", openSettings);
+  $("setSave").addEventListener("click", () => {
+    apiKey = $("keyInput").value.trim(); model = $("modelInput").value.trim() || "stt-rt-v5";
+    store.set("sl.key", apiKey); store.set("sl.model", model);
+    $("setSheet").classList.remove("open");
+  });
+  $("setClose").addEventListener("click", () => $("setSheet").classList.remove("open"));
+  function setFs(v){ fontSize = Math.max(14, Math.min(34, v)); document.documentElement.style.setProperty("--fs", fontSize + "px"); store.set("sl.fs", fontSize); }
+  $("fsUp").addEventListener("click", () => setFs(fontSize + 2));
+  $("fsDown").addEventListener("click", () => setFs(fontSize - 2));
+
+  // ---------- footer ----------
+  $("startBtn").addEventListener("click", () => running ? stop() : start());
+  $("ruBtn").addEventListener("click", () => {
+    showRu = !showRu; store.set("sl.ru", showRu);
+    document.body.classList.toggle("hide-ru", !showRu); $("ruBtn").classList.toggle("on", showRu);
+  });
+  $("listenBtn").addEventListener("click", () => {
+    listenOn = !listenOn;
+    $("listenBtn").classList.toggle("on", listenOn);
+    $("listenBtn").textContent = listenOn ? "🔊 Listen" : "🔈 Listen";
+    if ("speechSynthesis" in window) {
+      speechSynthesis.cancel();
+      if (listenOn) {
+        // iOS needs speech to start from a tap; also skip everything said before now
+        blocks.forEach(b => b.spoken = b.en.length);
+        const u = new SpeechSynthesisUtterance("Listening"); u.lang = "en-US"; speechSynthesis.speak(u);
+      }
+    }
+  });
+
+  // ---------- transcript sheet ----------
+  $("moreBtn").addEventListener("click", () => { $("copyNote").textContent = ""; $("moreSheet").classList.add("open"); });
+  $("moreClose").addEventListener("click", () => $("moreSheet").classList.remove("open"));
+  $("copyBtn").addEventListener("click", async () => {
+    const text = blocks.map(b => speakerName(b.speaker) + ": " + b.en.trim() + (b.ru.trim() ? "\n    (" + b.ru.trim() + ")" : "")).join("\n\n");
+    try { await navigator.clipboard.writeText(text); $("copyNote").textContent = "Copied."; }
+    catch(e){ $("copyNote").textContent = "Copy was blocked by the browser."; }
+  });
+  $("clearBtn").addEventListener("click", () => {
+    blocks.length = 0; main.innerHTML = ""; live.textContent = "";
+    $("moreSheet").classList.remove("open");
+  });
+
+  // close sheets when tapping the dim background
+  document.querySelectorAll(".sheet").forEach(s => s.addEventListener("click", e => { if (e.target === s) s.classList.remove("open"); }));
+
+  if (!apiKey) setTimeout(openSettings, 300);
+})();
+</script>
+</body>
+</html>
