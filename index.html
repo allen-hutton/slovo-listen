@@ -58,6 +58,10 @@
   .who.suggest{background:transparent !important;border:1px dashed currentColor;font-style:italic}
   .ok{display:none;margin-left:6px;font-size:13px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid var(--ok);color:var(--ok);background:transparent;cursor:pointer;vertical-align:top}
   .ok.show{display:inline-block}
+  .dur{font-size:11px;color:var(--muted);margin-left:6px;vertical-align:middle}
+  .dur.saved{color:var(--ok)}
+  #nameSheet .scope button{flex:1}
+  #sampleBox{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
   .who .tag{font-weight:400;opacity:.7;margin-left:4px;font-size:11px}
   #vstatus{font-size:12px;color:var(--muted)}
   .voice-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
@@ -131,11 +135,19 @@
   <div class="card">
     <h2 id="nameTitle">Who is this?</h2>
     <div class="row" id="suggestRow" style="display:none;margin:0 0 10px"><button id="suggestYes" class="on" style="flex:1"></button></div>
-    <input id="nameInput" placeholder="Name (e.g. Mom)" autocomplete="off">
+    <div class="row scope">
+      <button id="scopeLine" class="on">This line only</button>
+      <button id="scopeFwd">This + new lines from this speaker</button>
+    </div>
+    <input id="nameInput" placeholder="Name (e.g. Mom)" autocomplete="off" style="margin-top:10px">
     <div class="row chips" id="knownNames"></div>
     <div class="row">
       <button id="nameSave" class="on" style="flex:1">Save</button>
       <button id="nameCancel" style="flex:1">Cancel</button>
+    </div>
+    <div id="sampleBox">
+      <div class="row"><button id="sampleBtn" style="flex:1"></button></div>
+      <p class="note" id="sampleNote"></p>
     </div>
   </div>
 </div>
@@ -191,7 +203,7 @@
     </div>
     <div id="voiceList"></div>
     <div class="row"><button id="forgetAll" style="flex:1">Forget all voices</button></div>
-    <p class="note" id="voiceNote">Voiceprints are saved only on this phone. Tap ✓ next to a guessed name to confirm it, or tap the name to correct it — each confirmation adds a sample (one per person per session). With more samples, names appear sooner: about 8 s of speech at 3 samples, 5 s at 5, 3 s at 8+.</p>
+    <p class="note" id="voiceNote">Voiceprints are saved only on this phone. Voice samples come only from lines you choose: tap a line's name → “Save as voice sample”. Pick long lines (the seconds are shown next to each name) where only that person was talking. With more samples, guesses come sooner.</p>
     <div class="row"><button id="moreClose" style="flex:1">Close</button></div>
   </div>
 </div>
@@ -247,7 +259,10 @@
   function setStatus(t, isLive){ statusEl.textContent = t; statusEl.classList.toggle("live", !!isLive); }
 
   function speakerName(s){ return names[s] || ("Speaker " + s); }
-  function chipLabel(s){
+  function blockName(b){ return b.nameOverride || names[b.speaker] || ("Speaker " + b.speaker); }
+  function lineSecs(b){ return (b.startMs != null && b.endMs != null) ? Math.max(0, (b.endMs - b.startMs) / 1000) : 0; }
+  function chipLabel(s, b){
+    if (b && b.nameOverride) return { text: b.nameOverride, tag: "", suggest: false };
     const v = voice[s];
     if (names[s]) return { text: names[s], tag: (v && v.status === "auto") ? "auto" : "", suggest: false };
     if (v && v.status === "suggest") return { text: v.suggest + "?", tag: Math.round(v.score * 100) + "%", suggest: true };
@@ -269,10 +284,11 @@
     const ruEl = document.createElement("div"); ruEl.className = "ru";
     const pairsEl = document.createElement("div"); pairsEl.className = "pairs";
     const okEl = document.createElement("span"); okEl.className = "ok"; okEl.textContent = "✓"; okEl.setAttribute("role", "button");
-    const head = document.createElement("div"); head.append(whoEl, okEl);
+    const durEl = document.createElement("span"); durEl.className = "dur";
+    const head = document.createElement("div"); head.append(whoEl, okEl, durEl);
     el.append(head, enEl, ruEl, pairsEl);
-    const b = { speaker, en:"", ru:"", el, enEl, ruEl, whoEl, okEl, pairsEl, spoken:0, t: Date.now(), tEnd: Date.now() };
-    whoEl.addEventListener("click", () => openRename(b.speaker));
+    const b = { speaker, en:"", ru:"", el, enEl, ruEl, whoEl, okEl, durEl, pairsEl, spoken:0, t: Date.now(), tEnd: Date.now() };
+    whoEl.addEventListener("click", () => openRename(b));
     okEl.addEventListener("click", () => confirmVoice(b.speaker));
     el.addEventListener("click", e => {
       if (!selecting) return;
@@ -286,18 +302,22 @@
     return b;
   }
   function paintWho(b){
-    const l = chipLabel(b.speaker);
+    const l = chipLabel(b.speaker, b);
     b.whoEl.textContent = l.text;
     if (l.tag) { const t = document.createElement("span"); t.className = "tag"; t.textContent = l.tag; b.whoEl.appendChild(t); }
     b.whoEl.classList.toggle("suggest", l.suggest);
     const v = voice[b.speaker];
-    b.okEl.classList.toggle("show", !!(v && (v.status === "auto" || v.status === "suggest") && v.suggest));
+    b.okEl.classList.toggle("show", !b.nameOverride && !!(v && (v.status === "auto" || v.status === "suggest") && v.suggest));
+    const secs = lineSecs(b);
+    b.durEl.textContent = (secs ? secs.toFixed(1) + "s" : "") + (b.sampleSaved ? " · 🎙 saved" : "");
+    b.durEl.classList.toggle("saved", !!b.sampleSaved);
     const c = speakerColor(b.speaker);
     b.whoEl.style.background = c + "33"; b.whoEl.style.color = c;
   }
   function sentences(t){ return (t.trim().match(/[^.!?…]+[.!?…]+["»)]*\s*|[^.!?…]+$/g) || []).map(s => s.trim()).filter(Boolean); }
   function paint(b){
     b.tEnd = Date.now();
+    paintWho(b);
     b.enEl.textContent = b.en.trim(); b.ruEl.textContent = b.ru.trim();
     // split view: pair sentences side by side when the counts match, otherwise show the whole turn side by side
     const en = sentences(b.en), ru = sentences(b.ru);
@@ -338,7 +358,7 @@
       if (t.text === "<end>" || t.text === "<fin>") continue;
       const spk = t.speaker != null ? String(t.speaker) : (lastSpeaker || "1");
       const status = t.translation_status || "none";
-      const isEn = String(t.language || "").toLowerCase().startsWith("en");
+      const isEn = t.language ? String(t.language).toLowerCase().startsWith("en") : status !== "original";
       if (t.is_final) {
         if (status === "translation") {
           const b = blockForTranslation(spk);
@@ -349,6 +369,10 @@
           trackTiming(t, spk);
           const b = currentBlockFor(spk);
           if (!b.src) b.src = isEn ? "en" : "ru";
+          if (t.start_ms != null && t.end_ms != null) {
+            if (b.startMs == null || b.conn !== connId) { b.startMs = t.start_ms; b.conn = connId; }
+            b.endMs = Math.max(b.endMs || 0, t.end_ms);
+          }
           if (isEn) b.en += t.text; else b.ru += t.text;
           dirty.add(b);
         }
@@ -378,8 +402,9 @@
     if (speechSynthesis.pending || speechSynthesis.speaking) {
       if (speechSynthesis.pending) speechSynthesis.cancel();
     }
-    const prefix = (b.speaker !== lastSpokenSpeaker) ? speakerName(b.speaker) + ": " : "";
-    lastSpokenSpeaker = b.speaker;
+    const who = blockName(b);
+    const prefix = (who !== lastSpokenSpeaker) ? who + ": " : "";
+    lastSpokenSpeaker = who;
     const u = new SpeechSynthesisUtterance(prefix + chunk);
     u.lang = "en-US"; u.rate = 1.08;
     speechSynthesis.speak(u);
@@ -623,12 +648,12 @@
 
   function transcriptSince(since){
     return blocks.filter(b => b.tEnd >= since && b.en.trim())
-      .map(b => speakerName(b.speaker) + ": " + b.en.trim()).join("\n");
+      .map(b => blockName(b) + ": " + b.en.trim()).join("\n");
   }
   async function makeSummary(){
     if (!anthKey) { $("sumText").textContent = "Add your Claude API key in Settings (⚙︎) first."; return; }
     let text;
-    if (sumScope === "sel") text = selSnapshot.filter(b => b.en.trim()).map(b => speakerName(b.speaker) + ": " + b.en.trim()).join("\n");
+    if (sumScope === "sel") text = selSnapshot.filter(b => b.en.trim()).map(b => blockName(b) + ": " + b.en.trim()).join("\n");
     else text = transcriptSince(sumScope === "new" ? lastSummaryAt : sumScope === "5" ? Date.now() - 5 * 60000 : 0);
     if (!text) { $("sumText").textContent = "Nothing new to summarize yet."; $("sumMeta").textContent = ""; return; }
     if (text.length > 16000) text = text.slice(-16000);
@@ -712,7 +737,8 @@
   });
 
   // ---------- voice recognition (on-device) ----------
-  const RING_SECS = 90, RING = TARGET_RATE * RING_SECS;
+  const RING_SECS = 600, RING = TARGET_RATE * RING_SECS;   // last 10 minutes of audio, for saving voice samples
+  let connId = 0;
   const ring = new Int16Array(RING);
   let ringPos = 0, connSent = 0;          // samples sent on this connection
   let runs = {};                          // speaker -> {start,end} ms of current continuous speech
@@ -720,7 +746,7 @@
   let worker = null, modelReady = false, modelFailed = false, reqId = 0, modelPct = 0, modelMsg = "";
   const pending = new Map();
 
-  function resetVoiceSession(){ runs = {}; voice = {}; connSent = 0; ringPos = 0; }
+  function resetVoiceSession(){ runs = {}; voice = {}; connSent = 0; ringPos = 0; connId++; }
 
   function ringWrite(pkt){
     for (let i = 0; i < pkt.length; i++) { ring[ringPos] = pkt[i]; ringPos = (ringPos + 1) % RING; }
@@ -859,12 +885,42 @@
     return Math.min(autoSecs(most), suggestSecs(most));
   }
 
+  // naming a speaker no longer saves a voice sample; samples are only lines you pick yourself
   function learnVoice(spk, name){
     const v = voice[spk] || (voice[spk] = { clips: [], secs: 0, evalAt: 0, status: "none", busy: false });
-    v.status = "manual"; v.suggest = name;
-    if (!voiceOn) return;
-    if (v.emb && v.evalAt >= 3) enroll(v, name, v.emb);
-    else { v.pendingName = name; maybeIdentify(spk); }
+    v.status = "manual"; v.suggest = name; v.pendingName = null;
+  }
+
+  function waitModel(){
+    loadVoiceModel();
+    return new Promise((res, rej) => {
+      const iv = setInterval(() => {
+        if (modelReady) { clearInterval(iv); res(); }
+        else if (modelFailed) { clearInterval(iv); rej(new Error(modelMsg || "voice model failed to load")); }
+      }, 300);
+    });
+  }
+  async function saveSample(b, name){
+    const secs = lineSecs(b);
+    if (secs < 2) throw new Error("Line is too short (needs 2 s or more).");
+    if (b.conn !== connId) throw new Error("That line is from an earlier connection; its audio is gone.");
+    const audio = ringRead(Math.round(b.startMs * 16), Math.round(b.endMs * 16));
+    if (!audio) throw new Error("That line's audio is no longer kept (only the last 10 minutes are).");
+    await waitModel();
+    const CH = TARGET_RATE * 8, embs = [];
+    for (let i = 0; i < audio.length; i += CH) {
+      const piece = audio.slice(i, Math.min(audio.length, i + CH));
+      if (piece.length < TARGET_RATE * 1.5 && embs.length) break;
+      const e = await embed(piece); if (e) embs.push(norm(e));
+    }
+    if (!embs.length) throw new Error("Couldn't analyse that audio.");
+    const sample = centroid(embs).map(x => Math.round(x * 1e4) / 1e4);
+    const p = profiles[name] || (profiles[name] = { embs: [], secs: 0 });
+    p.embs.push(sample); p.secs = (p.secs || 0) + secs;
+    if (p.embs.length > 20) p.embs.shift();
+    p.updated = Date.now();
+    store.set("sl.voices", profiles);
+    b.sampleSaved = name; paintWho(b);
   }
   // one sample per speaker per session: relabeling moves it, more speech later improves it
   function enroll(v, name, emb){
@@ -896,9 +952,10 @@
     const name = v.suggest;
     names[spk] = name;
     learnVoice(spk, name);
-    if (!knownNames.includes(name)) { knownNames.push(name); knownNames = knownNames.slice(-16); store.set("sl.names", knownNames); }
+    rememberName(name);
     repaintSpeaker(spk);
   }
+  function rememberName(n){ if (!knownNames.includes(n)) { knownNames.push(n); knownNames = knownNames.slice(-16); store.set("sl.names", knownNames); } }
 
   function repaintSpeaker(spk){ blocks.forEach(b => { if (!b.closed && b.speaker === spk) paintWho(b); }); }
 
@@ -909,11 +966,12 @@
     $("strictVal").textContent = "(" + Math.round(strict * 100) + "%)";
     const list = $("voiceList"); list.innerHTML = "";
     const entries = Object.entries(profiles).sort((a, b) => a[0].localeCompare(b[0]));
-    if (!entries.length) { list.innerHTML = '<p class="note">No voices learned yet. Tap a speaker and name them.</p>'; return; }
+    if (!entries.length) { list.innerHTML = '<p class="note">No voice samples yet. Tap a line you are sure about and use “Save as voice sample”.</p>'; return; }
     for (const [name, p] of entries) {
       const row = document.createElement("div"); row.className = "voice-row";
       const label = document.createElement("span"); label.textContent = name + " ";
-      const small = document.createElement("small"); small.textContent = (p.embs ? p.embs.length : 0) + " sample" + ((p.embs && p.embs.length === 1) ? "" : "s");
+      const n = p.embs ? p.embs.length : 0;
+      const small = document.createElement("small"); small.textContent = n + " sample" + (n === 1 ? "" : "s") + (p.secs ? " · " + Math.round(p.secs) + "s" : "");
       label.appendChild(small);
       const del = document.createElement("button"); del.textContent = "Forget";
       del.addEventListener("click", () => {
@@ -937,33 +995,71 @@
     else { b.dataset.armed = "1"; b.textContent = "Tap again to forget all"; setTimeout(() => { delete b.dataset.armed; b.textContent = "Forget all voices"; }, 3000); }
   });
 
-  // ---------- rename ----------
-  let renaming = null;
-  function openRename(spk){
-    renaming = spk;
-    $("nameTitle").textContent = "Who is " + speakerName(spk) + "?";
-    const v = voice[spk];
-    const sug = v && (v.status === "suggest" || v.status === "auto") ? (v.suggest || names[spk]) : null;
+  // ---------- rename (per line by default) ----------
+  let renaming = null, nameScope = "line";
+  function setNameScope(s){ nameScope = s; $("scopeLine").classList.toggle("on", s === "line"); $("scopeFwd").classList.toggle("on", s === "fwd"); }
+  function openRename(b){
+    renaming = b;
+    setNameScope("line");
+    $("nameTitle").textContent = "Who said this? (now: " + blockName(b) + ")";
+    const v = voice[b.speaker];
+    const sug = !b.nameOverride && v && (v.status === "suggest" || v.status === "auto") ? (v.suggest || names[b.speaker]) : null;
     $("suggestRow").style.display = sug ? "flex" : "none";
-    if (sug) { $("suggestYes").textContent = "Yes — " + sug; $("suggestYes").onclick = () => applyName(sug); }
-    $("nameInput").value = names[spk] || "";
+    if (sug) { $("suggestYes").textContent = "Yes — " + sug; $("suggestYes").onclick = () => { setNameScope("fwd"); applyName(sug); }; }
+    $("nameInput").value = b.nameOverride || names[b.speaker] || "";
     const wrap = $("knownNames"); wrap.innerHTML = "";
     knownNames.forEach(n => {
-      const b = document.createElement("button"); b.textContent = n;
-      b.addEventListener("click", () => applyName(n));
-      wrap.appendChild(b);
+      const btn = document.createElement("button"); btn.textContent = n;
+      btn.addEventListener("click", () => applyName(n));
+      wrap.appendChild(btn);
     });
+    renderSampleBox();
     $("nameSheet").classList.add("open");
   }
+  function renderSampleBox(){
+    const b = renaming; if (!b) return;
+    const secs = lineSecs(b);
+    const typed = $("nameInput").value.trim();
+    const name = typed || (b.nameOverride || names[b.speaker] || "");
+    const btn = $("sampleBtn");
+    btn.disabled = !name || secs < 2;
+    btn.textContent = name ? "🎙 Save this line (" + secs.toFixed(1) + "s) as " + name + "'s voice sample" : "🎙 Name this line to save it as a voice sample";
+    $("sampleNote").textContent = b.sampleSaved ? "Already saved as " + b.sampleSaved + "'s sample." :
+      (secs < 2 ? "Too short — pick a line of 2 s or more (longer is better, ideally 5 s+)." : "Only save lines you're sure were one person, with no one talking over them.");
+  }
+  $("nameInput").addEventListener("input", renderSampleBox);
+  $("sampleBtn").addEventListener("click", async () => {
+    const b = renaming; if (!b) return;
+    const name = $("nameInput").value.trim() || b.nameOverride || names[b.speaker];
+    if (!name) return;
+    const btn = $("sampleBtn"); btn.disabled = true;
+    $("sampleNote").textContent = modelReady ? "Saving…" : "Loading the voice model (first time ~100 MB)…";
+    try { await saveSample(b, name); rememberName(name); $("sampleNote").textContent = "Saved as " + name + "'s voice sample."; }
+    catch (e) { $("sampleNote").textContent = e.message || String(e); }
+    finally { btn.disabled = false; }
+  });
+  $("scopeLine").addEventListener("click", () => setNameScope("line"));
+  $("scopeFwd").addEventListener("click", () => setNameScope("fwd"));
+
   function applyName(n){
     n = (n || "").trim();
-    if (renaming == null) return;
-    if (n) {
-      names[renaming] = n;
-      learnVoice(renaming, n);
-      if (!knownNames.includes(n)) { knownNames.push(n); knownNames = knownNames.slice(-16); store.set("sl.names", knownNames); }
-    } else { delete names[renaming]; const v = voice[renaming]; if (v) { if (v.enrolled) unenroll(v); v.status = "none"; v.pendingName = null; } }
-    repaintSpeaker(renaming);
+    const b = renaming; if (!b) return;
+    const spk = b.speaker;
+    if (nameScope === "line") {
+      b.nameOverride = n || null;
+      paintWho(b);
+    } else {
+      // freeze earlier lines so this never rewrites history, then name this and future lines
+      const idx = blocks.indexOf(b);
+      blocks.forEach((o, i) => {
+        if (i < idx && o.speaker === spk && !o.closed && !o.nameOverride) { o.nameOverride = names[spk] || ("Speaker " + spk); paintWho(o); }
+      });
+      b.nameOverride = null;
+      if (n) { names[spk] = n; learnVoice(spk, n); }
+      else { delete names[spk]; const v = voice[spk]; if (v) { v.status = "none"; v.pendingName = null; } }
+      repaintSpeaker(spk);
+    }
+    if (n) rememberName(n);
     $("nameSheet").classList.remove("open"); renaming = null;
   }
   $("nameSave").addEventListener("click", () => applyName($("nameInput").value));
@@ -1022,7 +1118,7 @@
   $("moreBtn").addEventListener("click", () => { $("copyNote").textContent = ""; renderVoices(); $("moreSheet").classList.add("open"); });
   $("moreClose").addEventListener("click", () => $("moreSheet").classList.remove("open"));
   $("copyBtn").addEventListener("click", async () => {
-    const text = blocks.map(b => speakerName(b.speaker) + ": " + b.en.trim() + (b.ru.trim() ? "\n    (" + b.ru.trim() + ")" : "")).join("\n\n");
+    const text = blocks.map(b => blockName(b) + ": " + b.en.trim() + (b.ru.trim() ? "\n    (" + b.ru.trim() + ")" : "")).join("\n\n");
     try { await navigator.clipboard.writeText(text); $("copyNote").textContent = "Copied."; }
     catch(e){ $("copyNote").textContent = "Copy was blocked by the browser."; }
   });
