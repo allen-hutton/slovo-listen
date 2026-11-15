@@ -142,7 +142,8 @@
       <button id="strictUp" style="flex:1">Stricter</button>
     </div>
     <div id="voiceList"></div>
-    <p class="note" id="voiceNote">Voiceprints are saved only on this phone. Naming a speaker, or confirming a guess, teaches the app that voice.</p>
+    <div class="row"><button id="forgetAll" style="flex:1">Forget all voices</button></div>
+    <p class="note" id="voiceNote">Voiceprints are saved only on this phone. Naming a speaker, or confirming a guess, teaches the app that voice — so only confirm when you're sure. A name is auto-filled only after that person has 3+ samples.</p>
     <div class="row"><button id="moreClose" style="flex:1">Close</button></div>
   </div>
 </div>
@@ -167,7 +168,7 @@
   let knownNames = store.get("sl.names", []);
   let showRu   = store.get("sl.ru", true);
   let voiceOn  = store.get("sl.voiceOn", true);
-  let strict   = store.get("sl.strict", 0.86);
+  let strict   = store.get("sl.strict2", 0.90);   // v2.1: stricter default (0.86 guessed too often in real rooms)
   let profiles = store.get("sl.voices", {});   // name -> { embs: [[512 floats]], updated }
   let split    = store.get("sl.split", false);
 
@@ -531,7 +532,7 @@
   }
   function closeRun(spk){
     const r = runs[spk]; delete runs[spk];
-    if (!r || r.end - r.start < 1200) return;
+    if (!r || r.end - r.start < 2000) return;   // short bursts give noisy voiceprints
     const clip = ringRead(Math.round((r.start + 100) * 16), Math.round((r.end - 100) * 16));
     if (!clip) return;
     const v = voice[spk] || (voice[spk] = { clips: [], secs: 0, evalAt: 0, status: "none", busy: false });
@@ -585,16 +586,28 @@
   }
 
   async function speakerEmbedding(v){
-    const clips = v.clips.slice(-4).map(c => c.slice(0));   // copies (buffers are transferred)
-    const embs = [];
+    const clips = v.clips.slice(-5).map(c => c.slice(0));   // copies (buffers are transferred)
+    let embs = [];
     for (const c of clips) { const e = await embed(c); if (e) embs.push(norm(e)); }
-    return embs.length ? centroid(embs) : null;
+    if (!embs.length) return null;
+    // drop the clip least like the others: usually a stretch where diarization mixed in another voice
+    if (embs.length >= 3) {
+      const c = centroid(embs);
+      let worst = 0, worstS = 2;
+      embs.forEach((e, i) => { const s = cos(e, c); if (s < worstS) { worstS = s; worst = i; } });
+      embs.splice(worst, 1);
+    }
+    return centroid(embs);
+  }
+  function takenBy(name, spk){
+    // another speaker in this session already holds this name (manually or with a confident match)
+    return Object.keys(names).some(o => o !== spk && names[o] === name && voice[o] && (voice[o].status === "manual" || voice[o].status === "auto"));
   }
 
   async function maybeIdentify(spk){
     const v = voice[spk];
     if (!v || v.busy || !voiceOn || !modelReady) return;
-    const want = v.pendingName ? 2.5 : 4;
+    const want = v.pendingName ? 4 : 6;
     if (v.secs < want) return;
     if (!v.pendingName && v.evalAt && (v.secs < v.evalAt * 2 || v.evalAt >= 24)) return;
     v.busy = true;
@@ -611,11 +624,16 @@
         if (s > bestS) { secondS = bestS; bestS = s; best = name; } else if (s > secondS) secondS = s;
       }
       if (!best) return;
-      if (bestS >= strict && bestS - Math.max(secondS, 0) >= 0.03) {
+      const margin = bestS - Math.max(secondS, 0);
+      const mature = profiles[best].embs.length >= 3;
+      const canAuto = bestS >= strict && margin >= 0.08 && mature && v.secs >= 8 && !takenBy(best, spk);
+      const canSuggest = bestS >= strict - 0.06 && margin >= 0.04;
+      if (canAuto) {
         names[spk] = best; v.status = "auto"; v.suggest = best; v.score = bestS;
-      } else if (bestS >= strict - 0.08) {
+      } else {
         if (names[spk] && v.status === "auto") delete names[spk];
-        v.status = "suggest"; v.suggest = best; v.score = bestS;
+        if (canSuggest) { v.status = "suggest"; v.suggest = best; v.score = bestS; }
+        else { v.status = "none"; v.suggest = null; }
       }
       repaintSpeaker(spk);
     } finally { v.busy = false; }
@@ -625,7 +643,7 @@
     const v = voice[spk] || (voice[spk] = { clips: [], secs: 0, evalAt: 0, status: "none", busy: false });
     v.status = "manual"; v.suggest = name;
     if (!voiceOn) return;
-    if (v.emb && v.evalAt >= 2.5) addToProfile(name, v.emb);
+    if (v.emb && v.evalAt >= 4) addToProfile(name, v.emb);
     else { v.pendingName = name; maybeIdentify(spk); }
   }
   function addToProfile(name, emb){
@@ -665,8 +683,13 @@
     if (voiceOn && running) loadVoiceModel();
     renderVoices();
   });
-  $("strictUp").addEventListener("click", () => { strict = Math.min(0.97, Math.round((strict + 0.02) * 100) / 100); store.set("sl.strict", strict); renderVoices(); });
-  $("strictDown").addEventListener("click", () => { strict = Math.max(0.6, Math.round((strict - 0.02) * 100) / 100); store.set("sl.strict", strict); renderVoices(); });
+  $("strictUp").addEventListener("click", () => { strict = Math.min(0.98, Math.round((strict + 0.02) * 100) / 100); store.set("sl.strict2", strict); renderVoices(); });
+  $("strictDown").addEventListener("click", () => { strict = Math.max(0.7, Math.round((strict - 0.02) * 100) / 100); store.set("sl.strict2", strict); renderVoices(); });
+  $("forgetAll").addEventListener("click", () => {
+    const b = $("forgetAll");
+    if (b.dataset.armed) { profiles = {}; store.set("sl.voices", profiles); delete b.dataset.armed; b.textContent = "Forget all voices"; renderVoices(); }
+    else { b.dataset.armed = "1"; b.textContent = "Tap again to forget all"; setTimeout(() => { delete b.dataset.armed; b.textContent = "Forget all voices"; }, 3000); }
+  });
 
   // ---------- rename ----------
   let renaming = null;
