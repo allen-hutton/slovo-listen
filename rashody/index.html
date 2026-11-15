@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Расходы">
+<meta name="theme-color" content="#111418">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Расходы</title>
+<style>
+  :root{
+    --bg:#111418; --panel:#1b1f25; --line:#2b3038; --text:#eef1f4; --muted:#8e97a1;
+    --accent:#4fa3ff; --living:#2fbf71; --trip:#f0a030; --danger:#ff5a5f;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;height:100dvh;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)}
+  button{font:inherit;color:var(--text);background:#262b33;border:1px solid var(--line);border-radius:12px;touch-action:manipulation;cursor:pointer}
+  button:active{filter:brightness(1.3)}
+  input,select{font:inherit;font-size:17px;color:var(--text);background:#0c0e11;border:1px solid var(--line);border-radius:10px;padding:11px;width:100%}
+  .view{flex:1;display:none;flex-direction:column;overflow:hidden;min-height:0}
+  .view.on{display:flex}
+  .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 20px}
+  h2{font-size:18px;margin:4px 0 10px}
+  h3{font-size:15px;margin:18px 0 6px;color:var(--muted);font-weight:600}
+  .note{font-size:13px;color:var(--muted);line-height:1.4}
+  .sync{font-size:12px;color:var(--muted);text-align:right;padding:4px 14px 0;min-height:18px}
+  .sync.warn{color:var(--trip)}
+
+  /* ---------- entry ---------- */
+  #add{padding:0 10px}
+  .amountRow{display:flex;align-items:center;gap:8px;padding:2px 2px 6px}
+  #amount{flex:1;font-size:44px;font-weight:700;text-align:right;letter-spacing:.5px;min-height:56px;line-height:56px;overflow:hidden;white-space:nowrap}
+  #amount.empty{color:#4a525c}
+  #curBtn{min-width:76px;height:52px;font-size:18px;font-weight:700}
+  #curBtn.usd{background:#1d3550;border-color:var(--accent)}
+  .cats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+  .cats button{height:40px;font-size:14px;text-align:left;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cats button.sel{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  #noteBtn{width:52px;height:52px;font-size:20px;flex:0 0 52px}
+  #noteBtn.has{background:#1d3550;border-color:var(--accent)}
+  .noteRow{display:none;margin:0 0 6px}
+  .noteRow.open{display:flex}
+  #noteInput{padding:9px 10px;font-size:16px}
+  .pad{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(4,1fr);gap:6px;margin-top:6px;flex:1 1 0;min-height:0}
+  .pad button{font-size:26px;font-weight:600;min-height:0;height:100%}
+  @media (max-height:620px){
+    #amount{font-size:36px;min-height:46px;line-height:46px}
+    #curBtn,#noteBtn{height:44px}
+    .cats{gap:5px} .cats button{height:34px;font-size:13px}
+    .pad{gap:5px} .pad button{font-size:22px}
+    .saves button{height:50px}
+    nav button{height:48px}
+  }
+  .saves{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 8px}
+  .saves button{height:58px;font-size:19px;font-weight:800;letter-spacing:1px;border:none;color:#08130c}
+  #saveLiving{background:var(--living)}
+  #saveTrip{background:var(--trip);color:#1d1203}
+  .saves button:disabled{opacity:.35}
+  #toast{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%) scale(.9);background:var(--living);color:#06210f;
+    font-size:24px;font-weight:800;padding:18px 30px;border-radius:16px;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:30}
+  #toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  #toast.trip{background:var(--trip);color:#1d1203}
+
+  /* ---------- tabs ---------- */
+  nav{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);background:var(--panel);
+    padding-bottom:env(safe-area-inset-bottom)}
+  nav button{border:none;border-radius:0;background:none;height:54px;font-size:13px;color:var(--muted)}
+  nav button b{display:block;font-size:20px;line-height:22px}
+  nav button.on{color:var(--accent)}
+
+  /* ---------- lists ---------- */
+  .item{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--line)}
+  .item .l{flex:1;min-width:0}
+  .item .t{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .s{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .a{font-size:17px;font-weight:700;text-align:right;white-space:nowrap}
+  .item .a small{display:block;font-size:12px;color:var(--muted);font-weight:400}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;margin-right:4px}
+  .tag.LIVING{background:#2fbf7133;color:var(--living)}
+  .tag.TRIP{background:#f0a03033;color:var(--trip)}
+  .pending{color:var(--trip)}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:right}
+  td:first-child,th:first-child{text-align:left}
+  th{color:var(--muted);font-weight:600;font-size:13px}
+  .big{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .card .k{font-size:12px;color:var(--muted)}
+  .card .v{font-size:22px;font-weight:700;margin-top:2px}
+  .card .v2{font-size:13px;color:var(--muted)}
+  .row{display:flex;gap:8px;margin-top:10px}
+  .row > button{flex:1;height:48px}
+  .primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .danger{background:transparent;border-color:var(--danger);color:var(--danger)}
+  label{display:block;font-size:13px;color:var(--muted);margin:14px 0 5px}
+  .seg{display:flex;gap:6px}
+  .seg button{flex:1;height:46px}
+  .seg button.sel{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+
+  /* ---------- sheets / setup ---------- */
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:20}
+  .sheet.open{display:flex}
+  .sheet .card{width:100%;border-radius:16px 16px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto}
+  #setup{position:fixed;inset:0;background:var(--bg);z-index:25;display:none;overflow-y:auto;
+    padding:calc(20px + env(safe-area-inset-top)) 18px calc(30px + env(safe-area-inset-bottom))}
+  #setup.open{display:block}
+  #setup h1{font-size:26px;margin:0 0 6px}
+  .who{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .who button{height:76px;font-size:22px;font-weight:700}
+  .err{color:var(--danger);font-size:14px;margin-top:8px;min-height:18px}
+  code{font-size:12px;word-break:break-all}
+</style>
+</head>
+<body>
+
+<div class="sync" id="sync"></div>
+
+<!-- ============ ENTRY ============ -->
+<section class="view on" id="add">
+  <div class="amountRow">
+    <button id="noteBtn" aria-label="Note">✎</button>
+    <div id="amount" class="empty">0</div>
+    <button id="curBtn">KGS</button>
+  </div>
+  <div class="noteRow" id="noteRow"><input id="noteInput" maxlength="80" autocomplete="off" data-i18n-ph="notePh"></div>
+  <div class="cats" id="cats"></div>
+  <div class="pad" id="pad"></div>
+  <div class="saves">
+    <button id="saveLiving" disabled data-i18n="living">LIVING</button>
+    <button id="saveTrip" disabled data-i18n="trip">TRIP</button>
+  </div>
+</section>
+
+<!-- ============ RECENT ============ -->
+<section class="view" id="recent">
+  <div class="scroll">
+    <h2 data-i18n="recentTitle">Recent</h2>
+    <div id="recentList"></div>
+  </div>
+</section>
+
+<!-- ============ SUMMARY ============ -->
+<section class="view" id="summary">
+  <div class="scroll" id="summaryBody"></div>
+</section>
+
+<!-- ============ SETTINGS ============ -->
+<section class="view" id="settings">
+  <div class="scroll">
+    <h2 data-i18n="settingsTitle">Settings</h2>
+    <label data-i18n="rateLabel">Exchange rate</label>
+    <div class="row" style="margin-top:0">
+      <input id="rateInput" type="number" inputmode="decimal" step="0.01" min="1">
+      <button id="rateSave" class="primary" style="flex:0 0 96px" data-i18n="save">Save</button>
+    </div>
+    <p class="note" data-i18n="rateNote">Applied to every entry, on both phones.</p>
+
+    <label data-i18n="langLabel">Language</label>
+    <div class="seg" id="langSeg">
+      <button data-lang="ru">Русский</button>
+      <button data-lang="en">English</button>
+    </div>
+
+    <label data-i18n="youAre">This phone belongs to</label>
+    <div class="seg" id="meSeg">
+      <button data-me="Allen">Allen</button>
+      <button data-me="Sveta">Sveta</button>
+    </div>
+
+    <h3 data-i18n="exportTitle">Export</h3>
+    <div class="row" style="margin-top:0">
+      <button id="copyBtn" class="primary" data-i18n="copyClaude">Copy for Claude</button>
+      <button id="csvBtn" data-i18n="downloadCsv">Download CSV</button>
+    </div>
+    <p class="note" id="exportNote"></p>
+
+    <h3 data-i18n="householdTitle">Household</h3>
+    <div class="row" style="margin-top:0">
+      <button id="inviteBtn" data-i18n="inviteBtn">Link for the other phone</button>
+    </div>
+    <label data-i18n="newPass">New household passcode</label>
+    <div class="row" style="margin-top:0">
+      <input id="newPassInput" type="password" autocomplete="new-password">
+      <button id="passSave" style="flex:0 0 96px" data-i18n="save">Save</button>
+    </div>
+    <p class="note" id="passNote"></p>
+    <p class="note" id="syncDetail" style="margin-top:16px"></p>
+    <div class="row"><button id="syncNow" data-i18n="syncNow">Sync now</button></div>
+  </div>
+</section>
+
+<nav>
+  <button data-view="add" class="on"><b>＋</b><span data-i18n="tabAdd">Add</span></button>
+  <button data-view="recent"><b>☰</b><span data-i18n="tabRecent">Recent</span></button>
+  <button data-view="summary"><b>Σ</b><span data-i18n="tabSummary">Summary</span></button>
+  <button data-view="settings"><b>⚙︎</b><span data-i18n="tabSettings">Settings</span></button>
+</nav>
+
+<div id="toast"></div>
+
+<!-- ============ EDIT SHEET ============ -->
+<div class="sheet" id="editSheet">
+  <div class="card">
+    <h2 data-i18n="editTitle">Edit entry</h2>
+    <div class="row" style="margin-top:0">
+      <input id="eAmount" type="number" inputmode="decimal" step="0.01" min="0">
+      <button id="eCur" style="flex:0 0 90px">KGS</button>
+    </div>
+    <label data-i18n="category">Category</label>
+    <select id="eCat"></select>
+    <label data-i18n="type">Type</label>
+    <div class="seg" id="eType">
+      <button data-type="LIVING" data-i18n="living">LIVING</button>
+      <button data-type="TRIP" data-i18n="trip">TRIP</button>
+    </div>
+    <label data-i18n="note">Note</label>
+    <input id="eNote" maxlength="80" autocomplete="off">
+    <p class="note" id="eMeta"></p>
+    <div class="row">
+      <button id="eSave" class="primary" data-i18n="save">Save</button>
+      <button id="eCancel" data-i18n="cancel">Cancel</button>
+    </div>
+    <div class="row"><button id="eDelete" class="danger" data-i18n="delete">Delete</button></div>
+  </div>
+</div>
+
+<!-- ============ SETUP ============ -->
+<div id="setup">
+  <div id="stepJoin" style="display:none">
+    <h1>Расходы</h1>
+    <p class="note" data-i18n="joinIntro">Enter the household passcode to join.</p>
+    <label data-i18n="passcode">Household passcode</label>
+    <input id="joinPass" type="password" autocomplete="current-password">
+    <div class="row"><button id="joinBtn" class="primary" data-i18n="join">Join</button></div>
+    <div class="err" id="joinErr"></div>
+  </div>
+
+  <div id="stepCreate" style="display:none">
+    <h1>Расходы</h1>
+    <p class="note" data-i18n="createIntro">First phone: connect the shared storage. The other phone joins with a link.</p>
+    <label data-i18n="tokenLabel">GitHub token</label>
+    <input id="cToken" type="password" autocomplete="off" placeholder="github_pat_…">
+    <label data-i18n="repoLabel">Data repository</label>
+    <input id="cRepo" autocomplete="off" value="allen-hutton/rashody-data">
+    <label data-i18n="passcode">Household passcode</label>
+    <input id="cPass" type="password" autocomplete="new-password">
+    <div class="row"><button id="createBtn" class="primary" data-i18n="connect">Connect</button></div>
+    <div class="err" id="createErr"></div>
+    <p class="note" data-i18n="createNote">Have a link from the other phone? Open that link instead.</p>
+  </div>
+
+  <div id="stepWho" style="display:none">
+    <h1 data-i18n="whoTitle">Who are you?</h1>
+    <p class="note" data-i18n="whoNote">Chosen once for this phone.</p>
+    <div class="who">
+      <button data-pick="Allen">Allen</button>
+      <button data-pick="Sveta">Света</button>
+    </div>
+    <label data-i18n="langLabel">Language</label>
+    <div class="seg" id="langSeg2">
+      <button data-lang="ru">Русский</button>
+      <button data-lang="en">English</button>
+    </div>
+  </div>
+</div>
+
+<!-- invite sheet -->
+<div class="sheet" id="inviteSheet">
+  <div class="card">
+    <h2 data-i18n="inviteTitle">Link for the other phone</h2>
+    <p class="note" data-i18n="inviteNote">Send this link to the other phone and open it there. It only works with the household passcode.</p>
+    <p><code id="inviteLink"></code></p>
+    <div class="row">
+      <button id="inviteCopy" class="primary" data-i18n="copy">Copy</button>
+      <button id="inviteClose" data-i18n="close">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* =====================================================================
+   Constants
+   ===================================================================== */
+const TRIP_START = "2026-11-16", TRIP_END = "2026-12-13";
+const DEFAULT_RATE = 87.5;              // KGS per 1 USD (mid-market, Nov 2026)
+const POLL_MS = 8000;
+const PEOPLE = ["Allen", "Sveta"];
+const CATS = [
+  { k: "Groceries",            en: "Groceries",              ru: "Продукты",          e: "🛒" },
+  { k: "Eating out",           en: "Eating out",             ru: "Кафе, рестораны",    e: "🍽" },
+  { k: "Taxi/transport",       en: "Taxi/transport",         ru: "Такси, транспорт",   e: "🚕" },
+  { k: "Household & odds-ends",en: "Household & odds-ends",  ru: "Хозяйство, мелочи",  e: "🧺" },
+  { k: "Gifts",                en: "Gifts",                  ru: "Подарки",            e: "🎁" },
+  { k: "Family/house build",   en: "Family/house build",     ru: "Семья, стройка",     e: "🏠" },
+  { k: "Phone/internet",       en: "Phone/internet",         ru: "Связь, интернет",    e: "📱" },
+  { k: "Health/pharmacy",      en: "Health/pharmacy",        ru: "Здоровье, аптека",   e: "💊" },
+  { k: "Fun",                  en: "Fun",                    ru: "Развлечения",        e: "🎉" },
+  { k: "Other",                en: "Other",                  ru: "Другое",             e: "•" }
+];
+
+const T = {
+  en: {
+    living:"LIVING", trip:"TRIP", notePh:"Note (optional)", recentTitle:"Recent (last 30)", settingsTitle:"Settings",
+    rateLabel:"Exchange rate — som per 1 USD", rateNote:"Applied to every entry, on both phones.", save:"Save",
+    langLabel:"Language", youAre:"This phone belongs to", exportTitle:"Export", copyClaude:"Copy for Claude",
+    downloadCsv:"Download CSV", householdTitle:"Household", inviteBtn:"Link for the other phone",
+    newPass:"New household passcode", syncNow:"Sync now", tabAdd:"Add", tabRecent:"Recent", tabSummary:"Summary",
+    tabSettings:"Settings", editTitle:"Edit entry", category:"Category", type:"Type", note:"Note", cancel:"Cancel",
+    delete:"Delete", joinIntro:"Enter the household passcode to join.", passcode:"Household passcode", join:"Join",
+    createIntro:"First phone: connect the shared storage. The other phone joins with a link from this one.",
+    tokenLabel:"GitHub token (Contents read/write on the data repo)", repoLabel:"Data repository (owner/name)",
+    connect:"Connect", createNote:"Have a link from the other phone? Open that link instead.",
+    whoTitle:"Who are you?", whoNote:"Chosen once for this phone.", inviteTitle:"Link for the other phone",
+    inviteNote:"Send this link to the other phone and open it there in Safari. It only works with the household passcode.",
+    copy:"Copy", close:"Close", saved:"Saved", savedTrip:"Saved · TRIP", pickCat:"Pick a category",
+    synced:"Synced", syncing:"Syncing…", offline:"Offline — {n} waiting to sync", waiting:"{n} waiting to sync",
+    syncErr:"Sync problem: {e}", never:"never", today:"Today", tripSoFar:"Trip so far", perDay:"per day",
+    dailyAvg:"Daily average", livingAvg:"LIVING daily average", days:"days", byCat:"By category", byPerson:"By person",
+    byType:"LIVING vs TRIP", total:"Total", noEntries:"No entries yet.", copied:"Copied — paste it into Claude.",
+    copyFail:"Copy was blocked — use Download CSV.", deleteConfirm:"Tap again to delete", rateSaved:"Rate saved.",
+    passSaved:"Passcode changed. Send the new link to the other phone.", passShort:"Use at least 6 characters.",
+    badPass:"Wrong passcode.", needAll:"Fill in all three fields.", checking:"Checking access…",
+    noAccess:"Couldn't reach that repository with this token: {e}", offlineSetup:"You're offline — connect once to finish setup.",
+    by:"by", edited:"edited by {p}", unsynced:"not synced yet", entries:"entries", setupLinkDone:"Link copied."
+  },
+  ru: {
+    living:"ЖИЗНЬ", trip:"ПОЕЗДКА", notePh:"Заметка (необязательно)", recentTitle:"Последние 30", settingsTitle:"Настройки",
+    rateLabel:"Курс — сомов за 1 доллар", rateNote:"Применяется ко всем записям на обоих телефонах.", save:"Сохранить",
+    langLabel:"Язык", youAre:"Чей это телефон", exportTitle:"Экспорт", copyClaude:"Копировать для Claude",
+    downloadCsv:"Скачать CSV", householdTitle:"Семья", inviteBtn:"Ссылка для второго телефона",
+    newPass:"Новый семейный код", syncNow:"Синхронизировать", tabAdd:"Добавить", tabRecent:"Список", tabSummary:"Итоги",
+    tabSettings:"Настройки", editTitle:"Изменить запись", category:"Категория", type:"Тип", note:"Заметка", cancel:"Отмена",
+    delete:"Удалить", joinIntro:"Введите семейный код, чтобы подключиться.", passcode:"Семейный код", join:"Подключиться",
+    createIntro:"Первый телефон: подключите общее хранилище. Второй телефон подключится по ссылке с этого.",
+    tokenLabel:"Токен GitHub", repoLabel:"Репозиторий данных (владелец/имя)",
+    connect:"Подключить", createNote:"Есть ссылка со второго телефона? Откройте её.",
+    whoTitle:"Кто вы?", whoNote:"Выбирается один раз на этом телефоне.", inviteTitle:"Ссылка для второго телефона",
+    inviteNote:"Отправьте эту ссылку на второй телефон и откройте её там в Safari. Без семейного кода она не работает.",
+    copy:"Копировать", close:"Закрыть", saved:"Сохранено", savedTrip:"Сохранено · ПОЕЗДКА", pickCat:"Выберите категорию",
+    synced:"Синхронизировано", syncing:"Синхронизация…", offline:"Нет сети — ждут отправки: {n}", waiting:"Ждут отправки: {n}",
+    syncErr:"Ошибка синхронизации: {e}", never:"никогда", today:"Сегодня", tripSoFar:"За поездку", perDay:"в день",
+    dailyAvg:"В среднем в день", livingAvg:"ЖИЗНЬ в среднем в день", days:"дн.", byCat:"По категориям", byPerson:"По людям",
+    byType:"ЖИЗНЬ и ПОЕЗДКА", total:"Итого", noEntries:"Записей пока нет.", copied:"Скопировано — вставьте в Claude.",
+    copyFail:"Копирование заблокировано — скачайте CSV.", deleteConfirm:"Нажмите ещё раз", rateSaved:"Курс сохранён.",
+    passSaved:"Код изменён. Отправьте новую ссылку на второй телефон.", passShort:"Минимум 6 символов.",
+    badPass:"Неверный код.", needAll:"Заполните все три поля.", checking:"Проверка доступа…",
+    noAccess:"Нет доступа к репозиторию с этим токеном: {e}", offlineSetup:"Нет сети — подключитесь один раз, чтобы закончить.",
+    by:"", edited:"изменил(а): {p}", unsynced:"ещё не отправлено", entries:"записей", setupLinkDone:"Ссылка скопирована."
+  }
+};
+const PERSON_RU = { Allen: "Аллен", Sveta: "Света" };
+
+/* =====================================================================
+   Storage helpers
+   ===================================================================== */
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem("rz." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("rz." + k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+};
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+
+let cfg     = LS.get("cfg", null);      // { token, repo, pass }
+let me      = LS.get("me", null);
+let lang    = LS.get("lang", (navigator.language || "ru").toLowerCase().startsWith("ru") ? "ru" : "en");
+let entries = LS.get("entries", {});    // id -> entry (merged view of both files)
+let dirty   = LS.get("dirty", false);   // our file has local changes not yet pushed
+let files   = LS.get("files", {});      // person -> { sha, etag }
+let shared  = LS.get("shared", { rate: DEFAULT_RATE, upd: 0, by: "" });   // shared settings (rate)
+let lastSync = LS.get("lastSync", 0), syncError = "";
+
+function persist() {
+  const ok = LS.set("entries", entries) && LS.set("dirty", dirty) && LS.set("shared", shared);
+  return ok;
+}
+function t(k, vars) { let s = (T[lang] && T[lang][k]) || T.en[k] || k; if (vars) for (const v in vars) s = s.replace("{" + v + "}", vars[v]); return s; }
+function personLabel(p) { return lang === "ru" ? (PERSON_RU[p] || p) : p; }
+function catLabel(k) { const c = CATS.find(c => c.k === k); return c ? (lang === "ru" ? c.ru : c.en) : k; }
+function catEmoji(k) { const c = CATS.find(c => c.k === k); return c ? c.e : "•"; }
+const $ = id => document.getElementById(id);
+
+function uid() {
+  const a = new Uint8Array(9); crypto.getRandomValues(a);
+  return Date.now().toString(36) + "-" + Array.from(a, b => b.toString(16).padStart(2, "0")).join("");
+}
+function pad2(n) { return String(n).padStart(2, "0"); }
+function localDate(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+function localTime(d) { return pad2(d.getHours()) + ":" + pad2(d.getMinutes()); }
+function rate() { return Number(shared.rate) > 0 ? Number(shared.rate) : DEFAULT_RATE; }
+function toKGS(e) { return e.cur === "USD" ? e.amt * rate() : e.amt; }
+function toUSD(e) { return e.cur === "USD" ? e.amt : e.amt / rate(); }
+function fmtK(n) { return Math.round(n).toLocaleString(lang === "ru" ? "ru-RU" : "en-US") + (lang === "ru" ? " с" : " KGS"); }
+function fmtU(n) { return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function live() { return Object.values(entries).filter(e => !e.del); }
+
+/* =====================================================================
+   i18n
+   ===================================================================== */
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll("[data-lang]").forEach(b => b.classList.toggle("sel", b.dataset.lang === lang));
+  renderCats(); renderEditCats(); renderAll();
+}
+function setLang(l) { lang = l; LS.set("lang", l); applyLang(); }
+document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
+
+/* =====================================================================
+   Entry screen
+   ===================================================================== */
+let amt = "", cur = "KGS", cat = null;
+
+function renderAmount() {
+  const el = $("amount");
+  el.textContent = amt || "0";
+  el.classList.toggle("empty", !amt);
+  const ok = parseFloat(amt) > 0;
+  $("saveLiving").disabled = !ok; $("saveTrip").disabled = !ok;
+}
+function renderCats() {
+  const box = $("cats"); box.innerHTML = "";
+  CATS.forEach(c => {
+    const b = document.createElement("button");
+    b.textContent = c.e + " " + (lang === "ru" ? c.ru : c.en);
+    b.dataset.cat = c.k;
+    b.classList.toggle("sel", cat === c.k);
+    b.addEventListener("click", () => { cat = (cat === c.k ? null : c.k); renderCats(); });
+    box.appendChild(b);
+  });
+}
+function renderPad() {
+  const keys = ["1","2","3","4","5","6","7","8","9",".","0","⌫"];
+  const box = $("pad"); box.innerHTML = "";
+  keys.forEach(k => {
+    const b = document.createElement("button"); b.textContent = k; b.dataset.key = k;
+    b.addEventListener("click", () => pressKey(k));
+    box.appendChild(b);
+  });
+}
+function pressKey(k) {
+  if (k === "⌫") amt = amt.slice(0, -1);
+  else if (k === ".") { if (!amt.includes(".")) amt = (amt || "0") + "."; }
+  else {
+    if (amt === "0") amt = "";
+    const dec = amt.split(".")[1];
+    if (dec != null && dec.length >= 2) return;
+    if (amt.replace(".", "").length >= 9) return;
+    amt += k;
+  }
+  renderAmount();
+}
+$("noteBtn").addEventListener("click", () => {
+  const open = !$("noteRow").classList.contains("open");
+  $("noteRow").classList.toggle("open", open);
+  if (open) $("noteInput").focus();
+});
+$("noteInput").addEventListener("input", () => $("noteBtn").classList.toggle("has", !!$("noteInput").value.trim()));
+$("curBtn").addEventListener("click", () => {
+  cur = cur === "KGS" ? "USD" : "KGS";
+  $("curBtn").textContent = cur; $("curBtn").classList.toggle("usd", cur === "USD");
+});
+
+let toastTimer = null;
+function toast(msg, cls) {
+  const el = $("toast"); el.textContent = msg; el.className = "show" + (cls ? " " + cls : "");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.className = ""; }, 900);
+}
+
+function saveEntry(type) {
+  const value = parseFloat(amt);
+  if (!(value > 0)) return;
+  if (!cat) { toast(t("pickCat"), "trip"); return; }
+  const now = new Date();
+  const e = {
+    id: uid(), date: localDate(now), time: localTime(now), ts: now.getTime(),
+    person: me, amt: Math.round(value * 100) / 100, cur, cat, type,
+    note: $("noteInput").value.trim().slice(0, 80),
+    upd: now.getTime(), editor: me
+  };
+  entries[e.id] = e; dirty = true;
+  persist();                                   // saved on the phone before anything else happens
+  toast(type === "TRIP" ? t("savedTrip") : t("saved"), type === "TRIP" ? "trip" : "");
+  amt = ""; cat = null; $("noteInput").value = ""; $("noteRow").classList.remove("open"); $("noteBtn").classList.remove("has"); $("noteInput").blur();
+  renderAmount(); renderCats(); renderAll();
+  scheduleSync(300);
+}
+$("saveLiving").addEventListener("click", () => saveEntry("LIVING"));
+$("saveTrip").addEventListener("click", () => saveEntry("TRIP"));
+
+/* =====================================================================
+   Tabs
+   ===================================================================== */
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === b.dataset.view));
+  renderAll();
+  if (b.dataset.view !== "add") scheduleSync(0);
+}));
+
+/* =====================================================================
+   Recent list + edit
+   ===================================================================== */
+function sorted() { return live().sort((a, b) => (b.ts - a.ts) || (b.id < a.id ? -1 : 1)); }
+function renderRecent() {
+  const box = $("recentList"); box.innerHTML = "";
+  const list = sorted().slice(0, 30);
+  if (!list.length) { box.innerHTML = '<p class="note">' + t("noEntries") + "</p>"; return; }
+  for (const e of list) {
+    const row = document.createElement("div"); row.className = "item";
+    const l = document.createElement("div"); l.className = "l";
+    const tt = document.createElement("div"); tt.className = "t";
+    tt.textContent = catEmoji(e.cat) + " " + catLabel(e.cat) + (e.note ? " — " + e.note : "");
+    const s = document.createElement("div"); s.className = "s";
+    const tag = document.createElement("span"); tag.className = "tag " + e.type; tag.textContent = t(e.type === "LIVING" ? "living" : "trip");
+    s.appendChild(tag);
+    s.appendChild(document.createTextNode(e.date.slice(5) + " " + e.time + " · " + personLabel(e.person)));
+    l.append(tt, s);
+    const a = document.createElement("div"); a.className = "a";
+    a.textContent = e.cur === "USD" ? fmtU(e.amt) : fmtK(e.amt);
+    const sm = document.createElement("small"); sm.textContent = e.cur === "USD" ? fmtK(toKGS(e)) : fmtU(toUSD(e));
+    a.appendChild(sm);
+    row.append(l, a);
+    row.addEventListener("click", () => openEdit(e.id));
+    box.appendChild(row);
+  }
+}
+
+let editing = null, eCurVal = "KGS", eTypeVal = "LIVING";
+function renderEditCats() {
+  const s = $("eCat"); const v = s.value; s.innerHTML = "";
+  CATS.forEach(c => { const o = document.createElement("option"); o.value = c.k; o.textContent = c.e + " " + (lang === "ru" ? c.ru : c.en); s.appendChild(o); });
+  if (v) s.value = v;
+}
+function openEdit(id) {
+  const e = entries[id]; if (!e) return;
+  editing = id;
+  $("eAmount").value = e.amt; eCurVal = e.cur; $("eCur").textContent = eCurVal;
+  $("eCat").value = e.cat; eTypeVal = e.type; paintEType();
+  $("eNote").value = e.note || "";
+  $("eMeta").textContent = e.date + " " + e.time + " · " + personLabel(e.person) +
+    (e.editor && e.editor !== e.person ? " · " + t("edited", { p: personLabel(e.editor) }) : "");
+  const del = $("eDelete"); delete del.dataset.armed; del.textContent = t("delete");
+  $("editSheet").classList.add("open");
+}
+function paintEType() { document.querySelectorAll("#eType button").forEach(b => b.classList.toggle("sel", b.dataset.type === eTypeVal)); }
+document.querySelectorAll("#eType button").forEach(b => b.addEventListener("click", () => { eTypeVal = b.dataset.type; paintEType(); }));
+$("eCur").addEventListener("click", () => { eCurVal = eCurVal === "KGS" ? "USD" : "KGS"; $("eCur").textContent = eCurVal; });
+function closeEdit() { $("editSheet").classList.remove("open"); editing = null; }
+$("eCancel").addEventListener("click", closeEdit);
+$("editSheet").addEventListener("click", ev => { if (ev.target === $("editSheet")) closeEdit(); });
+$("eSave").addEventListener("click", () => {
+  const e = entries[editing]; if (!e) return closeEdit();
+  const v = parseFloat($("eAmount").value);
+  if (!(v > 0)) return;
+  entries[editing] = Object.assign({}, e, {
+    amt: Math.round(v * 100) / 100, cur: eCurVal, cat: $("eCat").value, type: eTypeVal,
+    note: $("eNote").value.trim().slice(0, 80), upd: Math.max(Date.now(), (e.upd || 0) + 1), editor: me
+  });
+  dirty = true; persist(); closeEdit(); renderAll(); scheduleSync(300);
+});
+$("eDelete").addEventListener("click", () => {
+  const del = $("eDelete");
+  if (!del.dataset.armed) { del.dataset.armed = "1"; del.textContent = t("deleteConfirm"); return; }
+  const e = entries[editing]; if (!e) return closeEdit();
+  entries[editing] = Object.assign({}, e, { del: true, upd: Math.max(Date.now(), (e.upd || 0) + 1), editor: me });
+  dirty = true; persist(); closeEdit(); renderAll(); scheduleSync(300);
+});
+
+/* =====================================================================
+   Summary + export
+   ===================================================================== */
+function tripDays(list) {
+  const today = localDate(new Date());
+  let start = TRIP_START;
+  for (const e of list) if (e.date < start) start = e.date;
+  let end = today < TRIP_END ? today : TRIP_END;
+  for (const e of list) if (e.date > end) end = e.date;
+  if (end < start) end = start;
+  const ms = new Date(end + "T12:00:00") - new Date(start + "T12:00:00");
+  return { start, end, days: Math.round(ms / 86400000) + 1 };
+}
+function totals(list) {
+  const sum = list.reduce((s, e) => { s.k += toKGS(e); s.u += toUSD(e); s.n++; return s; }, { k: 0, u: 0, n: 0 });
+  return sum;
+}
+function groupBy(list, keyFn, order) {
+  const m = new Map(); (order || []).forEach(k => m.set(k, []));
+  list.forEach(e => { const k = keyFn(e); if (!m.has(k)) m.set(k, []); m.get(k).push(e); });
+  return Array.from(m.entries()).map(([k, l]) => [k, totals(l)]);
+}
+function computeSummary() {
+  const list = live();
+  const td = tripDays(list);
+  const today = localDate(new Date());
+  const all = totals(list), tday = totals(list.filter(e => e.date === today));
+  const living = totals(list.filter(e => e.type === "LIVING"));
+  return {
+    list, td, all, tday, living,
+    avg: { k: all.k / td.days, u: all.u / td.days },
+    livAvg: { k: living.k / td.days, u: living.u / td.days },
+    byCat: groupBy(list, e => e.cat, CATS.map(c => c.k)).filter(([, s]) => s.n),
+    byPerson: groupBy(list, e => e.person, PEOPLE),
+    byType: groupBy(list, e => e.type, ["LIVING", "TRIP"])
+  };
+}
+function card(k, v, v2) { return '<div class="card"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="v2">' + v2 + "</div></div>"; }
+function table(rows, labelFn, totalRow) {
+  let h = "<table><tr><th></th><th>KGS</th><th>USD</th></tr>";
+  rows.forEach(([k, s]) => { h += "<tr><td>" + esc(labelFn(k)) + "</td><td>" + fmtK(s.k) + "</td><td>" + fmtU(s.u) + "</td></tr>"; });
+  if (totalRow) h += "<tr><th>" + t("total") + "</th><th>" + fmtK(totalRow.k) + "</th><th>" + fmtU(totalRow.u) + "</th></tr>";
+  return h + "</table>";
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function renderSummary() {
+  const s = computeSummary();
+  let h = '<h2>' + t("tabSummary") + '</h2>';
+  h += '<p class="note">' + s.td.start + " → " + s.td.end + " · " + s.td.days + " " + (lang === "en" && s.td.days === 1 ? "day" : t("days")) + " · " + s.all.n + " " + t("entries") + " · 1 USD = " + rate() + (lang === "ru" ? " с" : " KGS") + "</p>";
+  h += '<div class="big">' +
+    card(t("today"), fmtK(s.tday.k), fmtU(s.tday.u)) +
+    card(t("tripSoFar"), fmtK(s.all.k), fmtU(s.all.u)) +
+    card(t("dailyAvg"), fmtK(s.avg.k), fmtU(s.avg.u) + " " + t("perDay")) +
+    card(t("livingAvg"), fmtK(s.livAvg.k), fmtU(s.livAvg.u) + " " + t("perDay")) + "</div>";
+  h += "<h3>" + t("byType") + "</h3>" + table(s.byType, k => t(k === "LIVING" ? "living" : "trip"), s.all);
+  h += "<h3>" + t("byCat") + "</h3>" + table(s.byCat, k => catEmoji(k) + " " + catLabel(k), s.all);
+  h += "<h3>" + t("byPerson") + "</h3>" + table(s.byPerson, k => personLabel(k), s.all);
+  $("summaryBody").innerHTML = h;
+}
+
+function csvCell(v) {
+  const s = String(v == null ? "" : v);
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function buildCSV() {
+  const rows = [["date","time","person","amount","currency","amount_usd","category","type","note"]];
+  live().sort((a, b) => a.ts - b.ts).forEach(e => rows.push([
+    e.date, e.time, e.person, e.amt.toFixed(2), e.cur, toUSD(e).toFixed(2), e.cat, e.type, (e.note || "").replace(/[\r\n]+/g, " ")
+  ]));
+  return rows.map(r => r.map(csvCell).join(",")).join("\n");
+}
+function mdNum(n) { return Math.round(n).toLocaleString("en-US"); }
+function mdUsd(n) { return n.toFixed(2); }
+function mdTable(title, rows, total) {
+  let s = "### " + title + "\n\n| | KGS | USD |\n|---|---:|---:|\n";
+  rows.forEach(([k, v]) => { s += "| " + k.replace(/\|/g, "/") + " | " + mdNum(v.k) + " | " + mdUsd(v.u) + " |\n"; });
+  if (total) s += "| **Total** | **" + mdNum(total.k) + "** | **" + mdUsd(total.u) + "** |\n";
+  return s + "\n";
+}
+function buildExport() {
+  const s = computeSummary();
+  let md = "# Kyrgyzstan expenses — Allen & Sveta\n\n";
+  md += "- Date range: " + s.td.start + " to " + s.td.end + "\n";
+  md += "- Days: " + s.td.days + "\n";
+  md += "- Exchange rate used: 1 USD = " + rate() + " KGS\n";
+  md += "- Entries: " + s.all.n + "\n";
+  md += "- Types: LIVING = we'd pay this if we lived here; TRIP = vacation-only or one-off\n\n";
+  md += "## Summary\n\n";
+  md += "- Total: " + mdNum(s.all.k) + " KGS (" + mdUsd(s.all.u) + " USD)\n";
+  md += "- Daily average, all spending: " + mdNum(s.avg.k) + " KGS (" + mdUsd(s.avg.u) + " USD)\n";
+  md += "- **Daily average, LIVING only: " + mdNum(s.livAvg.k) + " KGS (" + mdUsd(s.livAvg.u) + " USD)**\n\n";
+  md += mdTable("LIVING vs TRIP", s.byType, s.all);
+  md += mdTable("By category", s.byCat, s.all);
+  md += mdTable("By person", s.byPerson, s.all);
+  md += "## All entries\n\n```csv\n" + buildCSV() + "\n```\n";
+  return md;
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  try {                                     // fallback for older iOS
+    const ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", "");
+    ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta);
+    ta.select(); ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy"); ta.remove(); return ok;
+  } catch (e) { return false; }
+}
+$("copyBtn").addEventListener("click", async () => {
+  $("exportNote").textContent = (await copyText(buildExport())) ? t("copied") : t("copyFail");
+});
+$("csvBtn").addEventListener("click", () => {
+  const blob = new Blob(["﻿" + buildCSV() + "\n"], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "rashody-" + localDate(new Date()) + ".csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+});
+
+/* =====================================================================
+   Settings
+   ===================================================================== */
+function renderSettings() {
+  if (document.activeElement !== $("rateInput")) $("rateInput").value = rate();
+  document.querySelectorAll("[data-me]").forEach(b => b.classList.toggle("sel", b.dataset.me === me));
+  $("syncDetail").textContent = (cfg ? cfg.repo + " · " : "") + t("synced") + ": " +
+    (lastSync ? new Date(lastSync).toLocaleString(lang === "ru" ? "ru-RU" : "en-US") : t("never"));
+}
+$("rateSave").addEventListener("click", () => {
+  const v = parseFloat($("rateInput").value);
+  if (!(v > 0)) return;
+  shared = { rate: Math.round(v * 10000) / 10000, upd: Date.now(), by: me };
+  dirty = true; persist(); renderAll(); scheduleSync(200);
+  toast(t("rateSaved"));
+});
+document.querySelectorAll("[data-me]").forEach(b => b.addEventListener("click", () => { me = b.dataset.me; LS.set("me", me); renderAll(); }));
+$("syncNow").addEventListener("click", () => scheduleSync(0));
+
+/* =====================================================================
+   Household passcode + invite link (token encrypted with the passcode)
+   ===================================================================== */
+const enc = new TextEncoder(), dec = new TextDecoder();
+function b64u(bytes) { let s = ""; bytes.forEach(b => s += String.fromCharCode(b)); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+function unb64u(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; const bin = atob(s); return Uint8Array.from(bin, c => c.charCodeAt(0)); }
+async function keyFrom(pass, salt) {
+  const base = await crypto.subtle.importKey("raw", enc.encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 310000, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+async function sealInvite(c) {
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await keyFrom(c.pass, salt);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(JSON.stringify({ token: c.token, repo: c.repo }))));
+  const out = new Uint8Array(28 + ct.length); out.set(salt); out.set(iv, 16); out.set(ct, 28);
+  return b64u(out);
+}
+async function openInvite(blob, pass) {
+  const raw = unb64u(blob), salt = raw.slice(0, 16), iv = raw.slice(16, 28), ct = raw.slice(28);
+  const key = await keyFrom(pass, salt);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
+  return JSON.parse(dec.decode(pt));
+}
+async function inviteLink() {
+  const base = location.href.split("#")[0].split("?")[0];
+  return base + "#join=" + (await sealInvite(cfg));
+}
+$("inviteBtn").addEventListener("click", async () => {
+  $("inviteLink").textContent = await inviteLink();
+  $("inviteSheet").classList.add("open");
+});
+$("inviteCopy").addEventListener("click", async () => { if (await copyText($("inviteLink").textContent)) $("inviteCopy").textContent = t("setupLinkDone"); });
+$("inviteClose").addEventListener("click", () => { $("inviteSheet").classList.remove("open"); $("inviteCopy").textContent = t("copy"); });
+$("passSave").addEventListener("click", async () => {
+  const p = $("newPassInput").value;
+  if (p.length < 6) { $("passNote").textContent = t("passShort"); return; }
+  cfg.pass = p; LS.set("cfg", cfg); $("newPassInput").value = "";
+  $("passNote").textContent = t("passSaved");
+  $("inviteLink").textContent = await inviteLink();
+  $("inviteSheet").classList.add("open");
+});
+
+/* =====================================================================
+   Sync — each phone writes only its own file: data/<person>.json in the
+   private data repo. Everyone reads both files and merges by entry id,
+   keeping the newest edit. Entries are on the phone first; the network
+   is only ever a copy, so a failed sync never loses anything.
+   ===================================================================== */
+const API = "https://api.github.com";
+function ghHeaders(extra) {
+  return Object.assign({ "Authorization": "Bearer " + cfg.token, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" }, extra || {});
+}
+function fileUrl(p) { return API + "/repos/" + cfg.repo + "/contents/data/" + p.toLowerCase() + ".json"; }
+function b64decodeUtf8(b64) { return dec.decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), c => c.charCodeAt(0))); }
+function b64encodeUtf8(str) { const bytes = enc.encode(str); let s = ""; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); }
+
+function newer(a, b) {           // is a newer than b?
+  if (!b) return true;
+  if ((a.upd || 0) !== (b.upd || 0)) return (a.upd || 0) > (b.upd || 0);
+  return String(a.editor || "") > String(b.editor || "");
+}
+function mergeDoc(doc) {
+  let changed = false;
+  for (const e of (doc.entries || [])) {
+    if (!e || !e.id) continue;
+    if (newer(e, entries[e.id]) && JSON.stringify(e) !== JSON.stringify(entries[e.id])) { entries[e.id] = e; changed = true; }
+  }
+  if (doc.shared && (doc.shared.upd || 0) > (shared.upd || 0)) { shared = doc.shared; changed = true; }
+  return changed;
+}
+async function pull(person, force) {
+  const f = files[person] || {};
+  const h = (!force && f.etag) ? ghHeaders({ "If-None-Match": f.etag }) : ghHeaders();
+  const r = await fetch(fileUrl(person) + "?t=" + (force ? Date.now() : ""), { headers: h, cache: "no-store" });
+  if (r.status === 304) return false;
+  if (r.status === 404) { files[person] = {}; return false; }
+  if (!r.ok) throw new Error("GET " + person + " " + r.status);
+  const j = await r.json();
+  files[person] = { sha: j.sha, etag: r.headers.get("ETag") || "" };
+  return mergeDoc(JSON.parse(b64decodeUtf8(j.content || "") || "{}"));
+}
+function myDoc() {
+  // our file holds every entry whose latest edit is ours, plus the shared settings if we changed them last
+  const mine = Object.values(entries).filter(e => e.editor === me).sort((a, b) => a.ts - b.ts);
+  return { v: 1, person: me, updated: Date.now(), shared: shared.by === me ? shared : undefined, entries: mine };
+}
+async function push() {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const body = { message: "rashody: " + me + " " + new Date().toISOString(), content: b64encodeUtf8(JSON.stringify(myDoc())) };
+    const sha = (files[me] || {}).sha; if (sha) body.sha = sha;
+    const r = await fetch(fileUrl(me), { method: "PUT", headers: ghHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body), cache: "no-store" });
+    if (r.ok) {
+      const j = await r.json();
+      files[me] = { sha: j.content && j.content.sha, etag: "" };
+      return;
+    }
+    if (r.status === 409 || r.status === 422) { await pull(me, true); continue; }   // file moved on (same person on another device)
+    throw new Error("PUT " + r.status);
+  }
+  throw new Error("PUT conflict");
+}
+
+let syncing = false, syncTimer = null;
+function scheduleSync(ms) { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms); }
+async function syncNow() {
+  clearTimeout(syncTimer);
+  if (!cfg || !me) return;
+  if (syncing) { scheduleSync(1000); return; }
+  if (navigator.onLine === false) { syncError = ""; renderSync(); scheduleSync(POLL_MS); return; }
+  syncing = true; renderSync();
+  try {
+    let changed = false;
+    for (const p of PEOPLE) changed = (await pull(p, p === me && dirty)) || changed;
+    if (dirty) {
+      const pendingAtStart = JSON.stringify(myDoc().entries) + JSON.stringify(shared);
+      await push();
+      // only clear the flag if nothing new was saved while we were uploading
+      if (JSON.stringify(myDoc().entries) + JSON.stringify(shared) === pendingAtStart) dirty = false;
+    }
+    LS.set("files", files);
+    lastSync = Date.now(); LS.set("lastSync", lastSync); syncError = "";
+    persist();
+    if (changed) renderAll();
+  } catch (e) {
+    syncError = (e && e.message) || String(e);
+  } finally {
+    syncing = false; renderSync(); renderSettings();
+    scheduleSync(dirty ? 3000 : POLL_MS);
+  }
+}
+function pendingCount() { return dirty ? Object.values(entries).filter(e => e.editor === me && e.upd > lastSync).length || 1 : 0; }
+function renderSync() {
+  const el = $("sync"); const n = pendingCount();
+  el.classList.remove("warn");
+  if (navigator.onLine === false) { el.textContent = t("offline", { n }); el.classList.add("warn"); }
+  else if (syncError) { el.textContent = t("syncErr", { e: syncError }) + (n ? " · " + t("waiting", { n }) : ""); el.classList.add("warn"); }
+  else if (syncing) el.textContent = t("syncing");
+  else if (n) { el.textContent = t("waiting", { n }); el.classList.add("warn"); }
+  else el.textContent = lastSync ? "✓ " + t("synced") + " " + new Date(lastSync).toLocaleTimeString(lang === "ru" ? "ru-RU" : "en-US", { hour: "2-digit", minute: "2-digit" }) : "";
+}
+window.addEventListener("online", () => scheduleSync(0));
+window.addEventListener("offline", renderSync);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") scheduleSync(0); });
+
+/* =====================================================================
+   Setup flow
+   ===================================================================== */
+function showStep(id) {
+  ["stepJoin", "stepCreate", "stepWho"].forEach(s => $(s).style.display = s === id ? "block" : "none");
+  $("setup").classList.add("open");
+}
+function finishSetup() {
+  $("setup").classList.remove("open");
+  if (location.hash.startsWith("#join=")) history.replaceState(null, "", location.pathname);
+  renderAll(); scheduleSync(0);
+}
+function nextStep() {
+  const m = location.hash.match(/^#join=(.+)$/);
+  if (!cfg && m) return showStep("stepJoin");
+  if (!cfg) return showStep("stepCreate");
+  if (!me) return showStep("stepWho");
+  finishSetup();
+}
+$("joinBtn").addEventListener("click", async () => {
+  const m = location.hash.match(/^#join=(.+)$/); if (!m) return;
+  const pass = $("joinPass").value;
+  try {
+    const c = await openInvite(m[1], pass);
+    cfg = { token: c.token, repo: c.repo, pass }; LS.set("cfg", cfg);
+    $("joinErr").textContent = ""; nextStep();
+  } catch (e) { $("joinErr").textContent = t("badPass"); }
+});
+$("createBtn").addEventListener("click", async () => {
+  const token = $("cToken").value.trim(), repo = $("cRepo").value.trim().replace(/^https?:\/\/github\.com\//, "").replace(/\/$/, ""), pass = $("cPass").value;
+  if (!token || !repo || !pass) { $("createErr").textContent = t("needAll"); return; }
+  if (pass.length < 6) { $("createErr").textContent = t("passShort"); return; }
+  if (navigator.onLine === false) { $("createErr").textContent = t("offlineSetup"); return; }
+  $("createErr").textContent = t("checking");
+  try {
+    const r = await fetch(API + "/repos/" + repo, { headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" }, cache: "no-store" });
+    if (!r.ok) throw new Error(r.status === 404 ? "not found (check the name and the token's repository access)" : "HTTP " + r.status);
+    const j = await r.json();
+    if (j.permissions && j.permissions.push === false) throw new Error("token is read-only");
+  } catch (e) { $("createErr").textContent = t("noAccess", { e: e.message }); return; }
+  cfg = { token, repo, pass }; LS.set("cfg", cfg); $("createErr").textContent = ""; nextStep();
+});
+document.querySelectorAll("[data-pick]").forEach(b => b.addEventListener("click", () => { me = b.dataset.pick; LS.set("me", me); nextStep(); }));
+
+/* =====================================================================
+   Boot
+   ===================================================================== */
+function renderAll() {
+  renderSync();
+  if ($("recent").classList.contains("on")) renderRecent();
+  if ($("summary").classList.contains("on")) renderSummary();
+  if ($("settings").classList.contains("on")) renderSettings();
+}
+renderPad(); renderAmount(); applyLang();
+window.addEventListener("hashchange", nextStep);
+nextStep();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+
+// test hook (no secrets exposed beyond what this phone already stores)
+window.__rz = { syncNow, get entries() { return entries; }, get dirty() { return dirty; }, buildExport, buildCSV, computeSummary };
+})();
+</script>
+</body>
+</html>
