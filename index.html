@@ -55,12 +55,19 @@
   .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
   .chips button{padding:6px 12px;border-radius:999px}
   .note{font-size:13px;color:var(--muted);line-height:1.4;margin-top:10px}
+  .who.suggest{background:transparent !important;border:1px dashed currentColor;font-style:italic}
+  .who .tag{font-weight:400;opacity:.7;margin-left:4px;font-size:11px}
+  #vstatus{font-size:12px;color:var(--muted)}
+  .voice-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .voice-row span{flex:1}
+  .voice-row small{color:var(--muted)}
   #empty{color:var(--muted);text-align:center;margin-top:30vh;line-height:1.5;padding:0 20px}
 </style>
 </head>
 <body>
 <header>
   <h1>Slovo Listen</h1>
+  <span id="vstatus"></span>
   <span id="status">Idle</span>
   <button id="settingsBtn" aria-label="Settings">⚙︎</button>
 </header>
@@ -82,6 +89,7 @@
 <div class="sheet" id="nameSheet">
   <div class="card">
     <h2 id="nameTitle">Who is this?</h2>
+    <div class="row" id="suggestRow" style="display:none;margin:0 0 10px"><button id="suggestYes" class="on" style="flex:1"></button></div>
     <input id="nameInput" placeholder="Name (e.g. Mom)" autocomplete="off">
     <div class="row chips" id="knownNames"></div>
     <div class="row">
@@ -121,8 +129,19 @@
       <button id="copyBtn" style="flex:1">Copy transcript</button>
       <button id="clearBtn" style="flex:1">Clear</button>
     </div>
-    <div class="row"><button id="moreClose" style="flex:1">Close</button></div>
     <p class="note" id="copyNote"></p>
+    <h2 style="margin-top:18px">Voices</h2>
+    <div class="row">
+      <button id="voiceToggle" style="flex:1"></button>
+    </div>
+    <label>Auto-name strictness <span id="strictVal"></span></label>
+    <div class="row">
+      <button id="strictDown" style="flex:1">Looser</button>
+      <button id="strictUp" style="flex:1">Stricter</button>
+    </div>
+    <div id="voiceList"></div>
+    <p class="note" id="voiceNote">Voiceprints are saved only on this phone. Naming a speaker, or confirming a guess, teaches the app that voice.</p>
+    <div class="row"><button id="moreClose" style="flex:1">Close</button></div>
   </div>
 </div>
 
@@ -145,6 +164,9 @@
   let fontSize = store.get("sl.fs", 20);
   let knownNames = store.get("sl.names", []);
   let showRu   = store.get("sl.ru", true);
+  let voiceOn  = store.get("sl.voiceOn", true);
+  let strict   = store.get("sl.strict", 0.86);
+  let profiles = store.get("sl.voices", {});   // name -> { embs: [[512 floats]], updated }
   let split    = store.get("sl.split", false);
 
   let running = false, ws = null, audioCtx = null, stream = null, node = null, source = null;
@@ -168,6 +190,12 @@
   function setStatus(t, isLive){ statusEl.textContent = t; statusEl.classList.toggle("live", !!isLive); }
 
   function speakerName(s){ return names[s] || ("Speaker " + s); }
+  function chipLabel(s){
+    const v = voice[s];
+    if (names[s]) return { text: names[s], tag: (v && v.status === "auto") ? "auto" : "", suggest: false };
+    if (v && v.status === "suggest") return { text: v.suggest + "?", tag: Math.round(v.score * 100) + "%", suggest: true };
+    return { text: "Speaker " + s, tag: "", suggest: false };
+  }
   function speakerColor(s){ const n = parseInt(s, 10); return COLORS[(isNaN(n) ? 0 : n - 1) % COLORS.length]; }
 
   let stickToBottom = true;
@@ -192,7 +220,10 @@
     return b;
   }
   function paintWho(b){
-    b.whoEl.textContent = speakerName(b.speaker);
+    const l = chipLabel(b.speaker);
+    b.whoEl.textContent = l.text;
+    if (l.tag) { const t = document.createElement("span"); t.className = "tag"; t.textContent = l.tag; b.whoEl.appendChild(t); }
+    b.whoEl.classList.toggle("suggest", l.suggest);
     const c = speakerColor(b.speaker);
     b.whoEl.style.background = c + "33"; b.whoEl.style.color = c;
   }
@@ -243,6 +274,7 @@
           const b = blockForTranslation(spk); b.en += t.text; dirty.add(b);
         } else {
           lastSpeaker = spk;
+          trackTiming(t, spk);
           const b = currentBlockFor(spk);
           if (status === "original") b.ru += t.text; else b.en += t.text;
           dirty.add(b);
@@ -307,7 +339,7 @@
       const pkt = new Int16Array(sendLen); let p = 0;
       for (const b of sendBuf) { pkt.set(b, p); p += b.length; }
       sendBuf = []; sendLen = 0;
-      if (ws && ws.readyState === 1) ws.send(pkt.buffer);
+      if (ws && ws.readyState === 1) { ringWrite(pkt); ws.send(pkt.buffer); }
     }
   }
 
@@ -392,7 +424,7 @@
       try {
         ws = await connect();
         closeAllBlocks();
-        names = {}; lastSpeaker = null;
+        names = {}; lastSpeaker = null; resetVoiceSession();
         divider("— reconnected · speaker labels reset —");
         setStatus("Listening", true);
         reconnecting = false;
@@ -411,8 +443,10 @@
     $("startBtn").disabled = true; setStatus("Starting…");
     try {
       const label = await startAudio();
+      resetVoiceSession();
       ws = await connect();
       running = true;
+      if (voiceOn) loadVoiceModel();
       if (blocks.length) { closeAllBlocks(); divider("— new session · " + new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) + " —"); }
       names = {}; lastSpeaker = null;
       if (label) divider("Mic: " + label);
@@ -431,6 +465,7 @@
   }
 
   function stop(){
+    Object.keys(runs).forEach(closeRun);
     running = false;
     if (ws) {
       const sock = ws; ws = null;
@@ -462,11 +497,173 @@
     }
   });
 
+  // ---------- voice recognition (on-device) ----------
+  const RING_SECS = 90, RING = TARGET_RATE * RING_SECS;
+  const ring = new Int16Array(RING);
+  let ringPos = 0, connSent = 0;          // samples sent on this connection
+  let runs = {};                          // speaker -> {start,end} ms of current continuous speech
+  let voice = {};                         // speaker -> {clips, secs, evalAt, status, suggest, score, emb, pendingName, busy}
+  let worker = null, modelReady = false, modelFailed = false, reqId = 0;
+  const pending = new Map();
+
+  function resetVoiceSession(){ runs = {}; voice = {}; connSent = 0; ringPos = 0; }
+
+  function ringWrite(pkt){
+    for (let i = 0; i < pkt.length; i++) { ring[ringPos] = pkt[i]; ringPos = (ringPos + 1) % RING; }
+    connSent += pkt.length;
+  }
+  function ringRead(startSample, endSample){
+    if (endSample > connSent || connSent - startSample > RING || endSample <= startSample) return null;
+    const out = new Float32Array(endSample - startSample);
+    let pos = (ringPos - (connSent - startSample) + RING * 2) % RING;
+    for (let i = 0; i < out.length; i++) { out[i] = ring[pos] / 32768; pos = (pos + 1) % RING; }
+    return out;
+  }
+
+  function trackTiming(t, spk){
+    if (!voiceOn || t.start_ms == null || t.end_ms == null) return;
+    for (const k of Object.keys(runs)) if (k !== spk) closeRun(k);
+    const r = runs[spk];
+    if (r && t.start_ms - r.end <= 700 && t.end_ms - r.start <= 8000) r.end = Math.max(r.end, t.end_ms);
+    else { if (r) closeRun(spk); runs[spk] = { start: t.start_ms, end: t.end_ms }; }
+  }
+  function closeRun(spk){
+    const r = runs[spk]; delete runs[spk];
+    if (!r || r.end - r.start < 1200) return;
+    const clip = ringRead(Math.round((r.start + 100) * 16), Math.round((r.end - 100) * 16));
+    if (!clip) return;
+    const v = voice[spk] || (voice[spk] = { clips: [], secs: 0, evalAt: 0, status: "none", busy: false });
+    v.clips.push(clip); if (v.clips.length > 6) v.clips.shift();
+    v.secs += clip.length / TARGET_RATE;
+    maybeIdentify(spk);
+  }
+
+  function loadVoiceModel(){
+    if (worker || modelFailed) return;
+    try {
+      worker = new Worker("voice-worker.js", { type: "module" });
+    } catch (e) { modelFailed = true; setVStatus("voice off"); return; }
+    worker.onmessage = e => {
+      const m = e.data;
+      if (m.type === "progress") setVStatus(m.pct < 100 ? "voice model " + m.pct + "%" : "loading voice model…");
+      else if (m.type === "ready") { modelReady = true; setVStatus(""); Object.keys(voice).forEach(maybeIdentify); }
+      else if (m.type === "emb" || m.type === "error") {
+        const cb = pending.get(m.id); pending.delete(m.id);
+        if (m.type === "error" && m.id == null) { modelFailed = true; setVStatus("voice model failed"); divider("Voice model couldn't load: " + m.message); }
+        if (cb) cb(m.type === "emb" ? m.emb : null);
+      }
+    };
+    worker.onerror = () => { modelFailed = true; setVStatus("voice model failed"); };
+    setVStatus("voice model…");
+    worker.postMessage({ type: "load" });
+  }
+  function setVStatus(t){ $("vstatus").textContent = t; }
+
+  function embed(audio){
+    return new Promise(res => {
+      const id = ++reqId; pending.set(id, res);
+      worker.postMessage({ type: "embed", id, audio }, [audio.buffer]);
+    });
+  }
+  function norm(v){ let s = 0; for (const x of v) s += x * x; s = Math.sqrt(s) || 1; return v.map(x => x / s); }
+  function cos(a, b){ let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
+  function centroid(embs){
+    const c = new Array(embs[0].length).fill(0);
+    for (const e of embs) for (let i = 0; i < c.length; i++) c[i] += e[i];
+    return norm(c);
+  }
+
+  async function speakerEmbedding(v){
+    const clips = v.clips.slice(-4).map(c => c.slice(0));   // copies (buffers are transferred)
+    const embs = [];
+    for (const c of clips) { const e = await embed(c); if (e) embs.push(norm(e)); }
+    return embs.length ? centroid(embs) : null;
+  }
+
+  async function maybeIdentify(spk){
+    const v = voice[spk];
+    if (!v || v.busy || !voiceOn || !modelReady) return;
+    const want = v.pendingName ? 2.5 : 4;
+    if (v.secs < want) return;
+    if (!v.pendingName && v.evalAt && (v.secs < v.evalAt * 2 || v.evalAt >= 24)) return;
+    v.busy = true;
+    try {
+      const emb = await speakerEmbedding(v);
+      if (!emb) return;
+      v.emb = emb; v.evalAt = v.secs;
+      if (v.pendingName) { addToProfile(v.pendingName, emb); v.pendingName = null; return; }
+      if (v.status === "manual") return;
+      let best = null, bestS = -1, secondS = -1;
+      for (const [name, p] of Object.entries(profiles)) {
+        if (!p.embs || !p.embs.length) continue;
+        const s = cos(emb, centroid(p.embs));
+        if (s > bestS) { secondS = bestS; bestS = s; best = name; } else if (s > secondS) secondS = s;
+      }
+      if (!best) return;
+      if (bestS >= strict && bestS - Math.max(secondS, 0) >= 0.03) {
+        names[spk] = best; v.status = "auto"; v.suggest = best; v.score = bestS;
+      } else if (bestS >= strict - 0.08) {
+        if (names[spk] && v.status === "auto") delete names[spk];
+        v.status = "suggest"; v.suggest = best; v.score = bestS;
+      }
+      repaintSpeaker(spk);
+    } finally { v.busy = false; }
+  }
+
+  function learnVoice(spk, name){
+    const v = voice[spk] || (voice[spk] = { clips: [], secs: 0, evalAt: 0, status: "none", busy: false });
+    v.status = "manual"; v.suggest = name;
+    if (!voiceOn) return;
+    if (v.emb && v.evalAt >= 2.5) addToProfile(name, v.emb);
+    else { v.pendingName = name; maybeIdentify(spk); }
+  }
+  function addToProfile(name, emb){
+    const p = profiles[name] || (profiles[name] = { embs: [] });
+    p.embs.push(emb.map(x => Math.round(x * 1e4) / 1e4));
+    if (p.embs.length > 12) p.embs.shift();
+    p.updated = Date.now();
+    store.set("sl.voices", profiles);
+  }
+
+  function repaintSpeaker(spk){ blocks.forEach(b => { if (!b.closed && b.speaker === spk) paintWho(b); }); }
+
+  function renderVoices(){
+    $("voiceToggle").textContent = voiceOn ? "Voice recognition: ON" : "Voice recognition: OFF";
+    $("voiceToggle").classList.toggle("on", voiceOn);
+    $("strictVal").textContent = "(" + Math.round(strict * 100) + "%)";
+    const list = $("voiceList"); list.innerHTML = "";
+    const entries = Object.entries(profiles).sort((a, b) => a[0].localeCompare(b[0]));
+    if (!entries.length) { list.innerHTML = '<p class="note">No voices learned yet. Tap a speaker and name them.</p>'; return; }
+    for (const [name, p] of entries) {
+      const row = document.createElement("div"); row.className = "voice-row";
+      const label = document.createElement("span"); label.textContent = name + " ";
+      const small = document.createElement("small"); small.textContent = (p.embs ? p.embs.length : 0) + " sample" + ((p.embs && p.embs.length === 1) ? "" : "s");
+      label.appendChild(small);
+      const del = document.createElement("button"); del.textContent = "Forget";
+      del.addEventListener("click", () => {
+        if (del.dataset.armed) { delete profiles[name]; store.set("sl.voices", profiles); renderVoices(); }
+        else { del.dataset.armed = "1"; del.textContent = "Tap again"; setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.textContent = "Forget"; } }, 3000); }
+      });
+      row.append(label, del); list.appendChild(row);
+    }
+  }
+  $("voiceToggle").addEventListener("click", () => {
+    voiceOn = !voiceOn; store.set("sl.voiceOn", voiceOn);
+    if (voiceOn && running) loadVoiceModel();
+    renderVoices();
+  });
+  $("strictUp").addEventListener("click", () => { strict = Math.min(0.97, Math.round((strict + 0.02) * 100) / 100); store.set("sl.strict", strict); renderVoices(); });
+  $("strictDown").addEventListener("click", () => { strict = Math.max(0.6, Math.round((strict - 0.02) * 100) / 100); store.set("sl.strict", strict); renderVoices(); });
+
   // ---------- rename ----------
   let renaming = null;
   function openRename(spk){
     renaming = spk;
     $("nameTitle").textContent = "Who is " + speakerName(spk) + "?";
+    const v = voice[spk];
+    const sug = v && (v.status === "suggest" || v.status === "auto") ? (v.suggest || names[spk]) : null;
+    $("suggestRow").style.display = sug ? "flex" : "none";
+    if (sug) { $("suggestYes").textContent = "Yes — " + sug; $("suggestYes").onclick = () => applyName(sug); }
     $("nameInput").value = names[spk] || "";
     const wrap = $("knownNames"); wrap.innerHTML = "";
     knownNames.forEach(n => {
@@ -481,9 +678,10 @@
     if (renaming == null) return;
     if (n) {
       names[renaming] = n;
+      learnVoice(renaming, n);
       if (!knownNames.includes(n)) { knownNames.push(n); knownNames = knownNames.slice(-16); store.set("sl.names", knownNames); }
-    } else delete names[renaming];
-    blocks.forEach(b => { if (!b.closed && b.speaker === renaming) paintWho(b); });
+    } else { delete names[renaming]; if (voice[renaming]) { voice[renaming].status = "none"; voice[renaming].pendingName = null; } }
+    repaintSpeaker(renaming);
     $("nameSheet").classList.remove("open"); renaming = null;
   }
   $("nameSave").addEventListener("click", () => applyName($("nameInput").value));
@@ -533,7 +731,7 @@
   });
 
   // ---------- transcript sheet ----------
-  $("moreBtn").addEventListener("click", () => { $("copyNote").textContent = ""; $("moreSheet").classList.add("open"); });
+  $("moreBtn").addEventListener("click", () => { $("copyNote").textContent = ""; renderVoices(); $("moreSheet").classList.add("open"); });
   $("moreClose").addEventListener("click", () => $("moreSheet").classList.remove("open"));
   $("copyBtn").addEventListener("click", async () => {
     const text = blocks.map(b => speakerName(b.speaker) + ": " + b.en.trim() + (b.ru.trim() ? "\n    (" + b.ru.trim() + ")" : "")).join("\n\n");
