@@ -181,6 +181,16 @@
     </div>
     <p class="note" id="exportNote"></p>
 
+    <div id="localBox" style="display:none">
+      <h3 data-i18n="otherTitle">Add the other phone's entries</h3>
+      <p class="note" data-i18n="otherNote">On the other phone tap “Copy for Claude”, send it to yourself, and paste it here. Pasting the same export twice won't double anything.</p>
+      <textarea id="importText" rows="4" style="width:100%;font:inherit;font-size:15px;color:var(--text);background:#0c0e11;border:1px solid var(--line);border-radius:10px;padding:10px"></textarea>
+      <div class="row"><button id="importBtn" class="primary" data-i18n="importBtn">Add these entries</button></div>
+      <p class="note" id="importNote"></p>
+      <p class="note" style="margin-top:16px" data-i18n="localWarn">Entries live only on this phone (inside the Home Screen app). Every few days, tap “Copy for Claude” and paste it somewhere safe as a backup.</p>
+      <div class="row"><button id="goShared" data-i18n="goShared">Set up syncing between phones</button></div>
+    </div>
+    <div id="sharedBox">
     <h3 data-i18n="householdTitle">Household</h3>
     <div class="row" style="margin-top:0">
       <button id="inviteBtn" data-i18n="inviteBtn">Link for the other phone</button>
@@ -193,6 +203,7 @@
     <p class="note" id="passNote"></p>
     <p class="note" id="syncDetail" style="margin-top:16px"></p>
     <div class="row"><button id="syncNow" data-i18n="syncNow">Sync now</button></div>
+    </div>
   </div>
 </section>
 
@@ -242,6 +253,13 @@
     <div class="err" id="joinErr"></div>
   </div>
 
+  <div id="stepMode" style="display:none">
+    <h1>Расходы</h1>
+    <div class="row"><button id="modeLocal" class="primary" style="height:64px;font-size:18px" data-i18n="modeLocal">Keep entries on this phone</button></div>
+    <p class="note" data-i18n="modeLocalNote">No internet or accounts needed. Copy everything out at the end; the other phone's entries can be pasted in to combine totals.</p>
+    <div class="row" style="margin-top:22px"><button id="modeShared" data-i18n="modeShared">Sync between phones (needs GitHub)</button></div>
+  </div>
+
   <div id="stepCreate" style="display:none">
     <h1>Расходы</h1>
     <p class="note" data-i18n="createIntro">First phone: connect the shared storage. The other phone joins with a link.</p>
@@ -254,6 +272,7 @@
     <div class="row"><button id="createBtn" class="primary" data-i18n="connect">Connect</button></div>
     <div class="err" id="createErr"></div>
     <p class="note" data-i18n="createNote">Have a link from the other phone? Open that link instead.</p>
+    <div class="row"><button id="createBack" data-i18n="back">Back</button></div>
   </div>
 
   <div id="stepWho" style="display:none">
@@ -331,7 +350,13 @@ const T = {
     passSaved:"Passcode changed. Send the new link to the other phone.", passShort:"Use at least 6 characters.",
     badPass:"Wrong passcode.", needAll:"Fill in all three fields.", checking:"Checking access…",
     noAccess:"Couldn't reach that repository with this token: {e}", offlineSetup:"You're offline — connect once to finish setup.",
-    by:"by", edited:"edited by {p}", unsynced:"not synced yet", entries:"entries", setupLinkDone:"Link copied."
+    by:"by", edited:"edited by {p}", unsynced:"not synced yet", entries:"entries", setupLinkDone:"Link copied.",
+    modeLocal:"Keep entries on this phone", modeLocalNote:"No internet or accounts needed. Copy everything out at the end; the other phone's entries can be pasted in to combine totals.",
+    modeShared:"Sync between phones (needs GitHub)", back:"Back", otherTitle:"Add the other phone's entries",
+    otherNote:"On the other phone tap “Copy for Claude”, send it to yourself, and paste it here. Pasting the same export twice won't double anything.",
+    importBtn:"Add these entries", localWarn:"Entries live only on this phone (inside the Home Screen app). Every few days, tap “Copy for Claude” and paste it somewhere safe as a backup.",
+    goShared:"Set up syncing between phones", localStatus:"On this phone only · {n} entries", imported:"Added {a} entries ({s} already here).",
+    importNone:"No entries found — paste the whole “Copy for Claude” text."
   },
   ru: {
     living:"ЖИЗНЬ", trip:"ПОЕЗДКА", notePh:"Заметка (необязательно)", recentTitle:"Последние 30", settingsTitle:"Настройки",
@@ -355,7 +380,13 @@ const T = {
     passSaved:"Код изменён. Отправьте новую ссылку на второй телефон.", passShort:"Минимум 6 символов.",
     badPass:"Неверный код.", needAll:"Заполните все три поля.", checking:"Проверка доступа…",
     noAccess:"Нет доступа к репозиторию с этим токеном: {e}", offlineSetup:"Нет сети — подключитесь один раз, чтобы закончить.",
-    by:"", edited:"изменил(а): {p}", unsynced:"ещё не отправлено", entries:"записей", setupLinkDone:"Ссылка скопирована."
+    by:"", edited:"изменил(а): {p}", unsynced:"ещё не отправлено", entries:"записей", setupLinkDone:"Ссылка скопирована.",
+    modeLocal:"Хранить записи на этом телефоне", modeLocalNote:"Интернет и аккаунты не нужны. В конце всё копируется; записи со второго телефона можно вставить, чтобы сложить итоги.",
+    modeShared:"Синхронизация между телефонами (нужен GitHub)", back:"Назад", otherTitle:"Добавить записи со второго телефона",
+    otherNote:"На втором телефоне нажмите «Копировать для Claude», перешлите себе и вставьте сюда. Повторная вставка ничего не удвоит.",
+    importBtn:"Добавить записи", localWarn:"Записи хранятся только на этом телефоне (в приложении на экране «Домой»). Раз в несколько дней копируйте их для Claude и сохраняйте как резервную копию.",
+    goShared:"Настроить синхронизацию", localStatus:"Только на этом телефоне · записей: {n}", imported:"Добавлено: {a} (уже были: {s}).",
+    importNone:"Записи не найдены — вставьте весь текст «Копировать для Claude»."
   }
 };
 const PERSON_RU = { Allen: "Аллен", Sveta: "Света" };
@@ -693,13 +724,62 @@ $("csvBtn").addEventListener("click", () => {
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 });
 
+/* ---------- import the other phone's export (local mode) ---------- */
+function parseCSV(text) {
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(x => x !== ""));
+}
+function entryKey(e) { return [e.date, e.time, e.person, Number(e.amt).toFixed(2), e.cur, e.cat, e.type, e.note || ""].join("|"); }
+function hashKey(s) { let h1 = 0x811c9dc5, h2 = 0; for (let i = 0; i < s.length; i++) { h1 = Math.imul(h1 ^ s.charCodeAt(i), 16777619) >>> 0; h2 = (h2 * 31 + s.charCodeAt(i)) >>> 0; } return h1.toString(36) + h2.toString(36); }
+function importExport(text) {
+  const m = text.match(/```csv\s*\n([\s\S]*?)```/);
+  const rows = parseCSV(m ? m[1] : text);
+  const head = rows.findIndex(r => r[0] === "date" && r.includes("amount"));
+  if (head < 0) return null;
+  const cols = rows[head], ix = n => cols.indexOf(n);
+  const have = new Set(live().map(entryKey));
+  let added = 0, same = 0;
+  for (const r of rows.slice(head + 1)) {
+    const amtv = parseFloat(r[ix("amount")]);
+    if (!r[ix("date")] || !(amtv > 0)) continue;
+    const e = { date: r[ix("date")], time: r[ix("time")] || "00:00", person: r[ix("person")] || "Sveta", amt: Math.round(amtv * 100) / 100,
+      cur: r[ix("currency")] === "USD" ? "USD" : "KGS", cat: r[ix("category")] || "Other", type: r[ix("type")] === "TRIP" ? "TRIP" : "LIVING",
+      note: (r[ix("note")] || "").slice(0, 80) };
+    const k = entryKey(e);
+    if (have.has(k)) { same++; continue; }
+    const ts = new Date(e.date + "T" + e.time + ":00").getTime() || Date.now();
+    Object.assign(e, { id: "imp-" + hashKey(k), ts, upd: ts, editor: e.person, imported: true });
+    entries[e.id] = e; have.add(k); added++;
+  }
+  persist();
+  return { added, same };
+}
+$("importBtn").addEventListener("click", () => {
+  const res = importExport($("importText").value || "");
+  if (!res) { $("importNote").textContent = t("importNone"); return; }
+  $("importNote").textContent = t("imported", { a: res.added, s: res.same });
+  $("importText").value = ""; renderAll();
+});
+
 /* =====================================================================
    Settings
    ===================================================================== */
 function renderSettings() {
+  const local = !!(cfg && cfg.local);
+  $("localBox").style.display = local ? "block" : "none";
+  $("sharedBox").style.display = local ? "none" : "block";
   if (document.activeElement !== $("rateInput")) $("rateInput").value = rate();
   document.querySelectorAll("[data-me]").forEach(b => b.classList.toggle("sel", b.dataset.me === me));
-  $("syncDetail").textContent = (cfg ? cfg.repo + " · " : "") + t("synced") + ": " +
+  if (!local) $("syncDetail").textContent = (cfg ? cfg.repo + " · " : "") + t("synced") + ": " +
     (lastSync ? new Date(lastSync).toLocaleString(lang === "ru" ? "ru-RU" : "en-US") : t("never"));
 }
 $("rateSave").addEventListener("click", () => {
@@ -818,7 +898,7 @@ let syncing = false, syncTimer = null;
 function scheduleSync(ms) { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms); }
 async function syncNow() {
   clearTimeout(syncTimer);
-  if (!cfg || !me) return;
+  if (!cfg || !me || cfg.local) { renderSync(); return; }
   if (syncing) { scheduleSync(1000); return; }
   if (navigator.onLine === false) { syncError = ""; renderSync(); scheduleSync(POLL_MS); return; }
   syncing = true; renderSync();
@@ -844,8 +924,10 @@ async function syncNow() {
 }
 function pendingCount() { return dirty ? Object.values(entries).filter(e => e.editor === me && e.upd > lastSync).length || 1 : 0; }
 function renderSync() {
-  const el = $("sync"); const n = pendingCount();
+  const el = $("sync");
   el.classList.remove("warn");
+  if (cfg && cfg.local) { el.textContent = t("localStatus", { n: live().length }); return; }
+  const n = pendingCount();
   if (navigator.onLine === false) { el.textContent = t("offline", { n }); el.classList.add("warn"); }
   else if (syncError) { el.textContent = t("syncErr", { e: syncError }) + (n ? " · " + t("waiting", { n }) : ""); el.classList.add("warn"); }
   else if (syncing) el.textContent = t("syncing");
@@ -860,7 +942,7 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
    Setup flow
    ===================================================================== */
 function showStep(id) {
-  ["stepJoin", "stepCreate", "stepWho"].forEach(s => $(s).style.display = s === id ? "block" : "none");
+  ["stepMode", "stepJoin", "stepCreate", "stepWho"].forEach(s => $(s).style.display = s === id ? "block" : "none");
   $("setup").classList.add("open");
 }
 function finishSetup() {
@@ -868,10 +950,11 @@ function finishSetup() {
   if (location.hash.startsWith("#join=")) history.replaceState(null, "", location.pathname);
   renderAll(); scheduleSync(0);
 }
+let wantShared = false;
 function nextStep() {
   const m = location.hash.match(/^#join=(.+)$/);
   if (!cfg && m) return showStep("stepJoin");
-  if (!cfg) return showStep("stepCreate");
+  if (!cfg) return showStep(wantShared ? "stepCreate" : "stepMode");
   if (!me) return showStep("stepWho");
   finishSetup();
 }
@@ -896,8 +979,14 @@ $("createBtn").addEventListener("click", async () => {
     const j = await r.json();
     if (j.permissions && j.permissions.push === false) throw new Error("token is read-only");
   } catch (e) { $("createErr").textContent = t("noAccess", { e: e.message }); return; }
-  cfg = { token, repo, pass }; LS.set("cfg", cfg); $("createErr").textContent = ""; nextStep();
+  cfg = { token, repo, pass }; LS.set("cfg", cfg); $("createErr").textContent = "";
+  if (live().some(e => e.editor === me)) { dirty = true; persist(); }
+  nextStep();
 });
+$("modeLocal").addEventListener("click", () => { cfg = { local: true }; LS.set("cfg", cfg); nextStep(); });
+$("modeShared").addEventListener("click", () => { wantShared = true; nextStep(); });
+$("createBack").addEventListener("click", () => { wantShared = false; if (cfg && cfg.local) finishSetup(); else nextStep(); });
+$("goShared").addEventListener("click", () => { wantShared = true; showStep("stepCreate"); });
 document.querySelectorAll("[data-pick]").forEach(b => b.addEventListener("click", () => { me = b.dataset.pick; LS.set("me", me); nextStep(); }));
 
 /* =====================================================================
