@@ -56,6 +56,8 @@
   .chips button{padding:6px 12px;border-radius:999px}
   .note{font-size:13px;color:var(--muted);line-height:1.4;margin-top:10px}
   .who.suggest{background:transparent !important;border:1px dashed currentColor;font-style:italic}
+  .ok{display:none;margin-left:6px;font-size:13px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid var(--ok);color:var(--ok);background:transparent;cursor:pointer;vertical-align:top}
+  .ok.show{display:inline-block}
   .who .tag{font-weight:400;opacity:.7;margin-left:4px;font-size:11px}
   #vstatus{font-size:12px;color:var(--muted)}
   .voice-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
@@ -143,7 +145,7 @@
     </div>
     <div id="voiceList"></div>
     <div class="row"><button id="forgetAll" style="flex:1">Forget all voices</button></div>
-    <p class="note" id="voiceNote">Voiceprints are saved only on this phone. Naming a speaker, or confirming a guess, teaches the app that voice — so only confirm when you're sure. A name is auto-filled only after that person has 3+ samples.</p>
+    <p class="note" id="voiceNote">Voiceprints are saved only on this phone. Tap ✓ next to a guessed name to confirm it, or tap the name to correct it — each confirmation adds a sample (one per person per session). With more samples, names appear sooner: about 8 s of speech at 3 samples, 5 s at 5, 3 s at 8+.</p>
     <div class="row"><button id="moreClose" style="flex:1">Close</button></div>
   </div>
 </div>
@@ -214,9 +216,12 @@
     const enEl = document.createElement("div"); enEl.className = "en";
     const ruEl = document.createElement("div"); ruEl.className = "ru";
     const pairsEl = document.createElement("div"); pairsEl.className = "pairs";
-    el.append(whoEl, enEl, ruEl, pairsEl);
-    const b = { speaker, en:"", ru:"", el, enEl, ruEl, whoEl, pairsEl, spoken:0 };
+    const okEl = document.createElement("span"); okEl.className = "ok"; okEl.textContent = "✓"; okEl.setAttribute("role", "button");
+    const head = document.createElement("div"); head.append(whoEl, okEl);
+    el.append(head, enEl, ruEl, pairsEl);
+    const b = { speaker, en:"", ru:"", el, enEl, ruEl, whoEl, okEl, pairsEl, spoken:0 };
     whoEl.addEventListener("click", () => openRename(b.speaker));
+    okEl.addEventListener("click", () => confirmVoice(b.speaker));
     paintWho(b);
     main.appendChild(el);
     blocks.push(b);
@@ -227,6 +232,8 @@
     b.whoEl.textContent = l.text;
     if (l.tag) { const t = document.createElement("span"); t.className = "tag"; t.textContent = l.tag; b.whoEl.appendChild(t); }
     b.whoEl.classList.toggle("suggest", l.suggest);
+    const v = voice[b.speaker];
+    b.okEl.classList.toggle("show", !!(v && (v.status === "auto" || v.status === "suggest") && v.suggest));
     const c = speakerColor(b.speaker);
     b.whoEl.style.background = c + "33"; b.whoEl.style.color = c;
   }
@@ -607,16 +614,17 @@
   async function maybeIdentify(spk){
     const v = voice[spk];
     if (!v || v.busy || !voiceOn || !modelReady) return;
-    const want = v.pendingName ? 4 : 6;
+    // the more samples the best-known voices have, the sooner we try (3 s once someone has 8+ samples)
+    const want = v.pendingName ? 4 : firstLook();
     if (v.secs < want) return;
-    if (!v.pendingName && v.evalAt && (v.secs < v.evalAt * 2 || v.evalAt >= 24)) return;
+    if (!v.pendingName && v.evalAt && (v.secs < v.evalAt + 2 || v.evalAt >= 24)) return;
     v.busy = true;
     try {
       const emb = await speakerEmbedding(v);
       if (!emb) return;
       v.emb = emb; v.evalAt = v.secs;
-      if (v.pendingName) { addToProfile(v.pendingName, emb); v.pendingName = null; return; }
-      if (v.status === "manual") return;
+      if (v.pendingName) { enroll(v, v.pendingName, emb); v.pendingName = null; return; }
+      if (v.status === "manual") { if (v.enrolled) refineSample(v, emb); return; }
       let best = null, bestS = -1, secondS = -1;
       for (const [name, p] of Object.entries(profiles)) {
         if (!p.embs || !p.embs.length) continue;
@@ -625,9 +633,9 @@
       }
       if (!best) return;
       const margin = bestS - Math.max(secondS, 0);
-      const mature = profiles[best].embs.length >= 3;
-      const canAuto = bestS >= strict && margin >= 0.08 && mature && v.secs >= 8 && !takenBy(best, spk);
-      const canSuggest = bestS >= strict - 0.06 && margin >= 0.04;
+      const n = profiles[best].embs.length;
+      const canAuto = n >= 3 && bestS >= strict && margin >= 0.08 && v.secs >= autoSecs(n) && !takenBy(best, spk);
+      const canSuggest = v.secs >= suggestSecs(n) && bestS >= strict - 0.06 && margin >= 0.04;
       if (canAuto) {
         names[spk] = best; v.status = "auto"; v.suggest = best; v.score = bestS;
       } else {
@@ -639,19 +647,53 @@
     } finally { v.busy = false; }
   }
 
+  // seconds of speech needed, by how many samples the matched voice has
+  function autoSecs(n){ return n >= 8 ? 3 : n >= 5 ? 5 : 8; }
+  function suggestSecs(n){ return n >= 8 ? 3 : n >= 5 ? 4 : 6; }
+  function firstLook(){
+    let most = 0; for (const p of Object.values(profiles)) most = Math.max(most, (p.embs || []).length);
+    return Math.min(autoSecs(most), suggestSecs(most));
+  }
+
   function learnVoice(spk, name){
     const v = voice[spk] || (voice[spk] = { clips: [], secs: 0, evalAt: 0, status: "none", busy: false });
     v.status = "manual"; v.suggest = name;
     if (!voiceOn) return;
-    if (v.emb && v.evalAt >= 4) addToProfile(name, v.emb);
+    if (v.emb && v.evalAt >= 3) enroll(v, name, v.emb);
     else { v.pendingName = name; maybeIdentify(spk); }
   }
-  function addToProfile(name, emb){
+  // one sample per speaker per session: relabeling moves it, more speech later improves it
+  function enroll(v, name, emb){
+    if (v.enrolled) unenroll(v);
+    const sample = emb.map(x => Math.round(x * 1e4) / 1e4);
     const p = profiles[name] || (profiles[name] = { embs: [] });
-    p.embs.push(emb.map(x => Math.round(x * 1e4) / 1e4));
+    p.embs.push(sample);
     if (p.embs.length > 12) p.embs.shift();
     p.updated = Date.now();
+    v.enrolled = { name, sample };
     store.set("sl.voices", profiles);
+  }
+  function unenroll(v){
+    const { name, sample } = v.enrolled; v.enrolled = null;
+    const p = profiles[name]; if (!p) return;
+    const i = p.embs.indexOf(sample); if (i >= 0) p.embs.splice(i, 1);
+    if (!p.embs.length) delete profiles[name];
+    store.set("sl.voices", profiles);
+  }
+  function refineSample(v, emb){
+    const p = profiles[v.enrolled.name]; if (!p) return;
+    const i = p.embs.indexOf(v.enrolled.sample); if (i < 0) return;
+    const sample = emb.map(x => Math.round(x * 1e4) / 1e4);
+    p.embs[i] = sample; v.enrolled.sample = sample;
+    store.set("sl.voices", profiles);
+  }
+  function confirmVoice(spk){
+    const v = voice[spk]; if (!v || !v.suggest) return;
+    const name = v.suggest;
+    names[spk] = name;
+    learnVoice(spk, name);
+    if (!knownNames.includes(name)) { knownNames.push(name); knownNames = knownNames.slice(-16); store.set("sl.names", knownNames); }
+    repaintSpeaker(spk);
   }
 
   function repaintSpeaker(spk){ blocks.forEach(b => { if (!b.closed && b.speaker === spk) paintWho(b); }); }
@@ -716,7 +758,7 @@
       names[renaming] = n;
       learnVoice(renaming, n);
       if (!knownNames.includes(n)) { knownNames.push(n); knownNames = knownNames.slice(-16); store.set("sl.names", knownNames); }
-    } else { delete names[renaming]; if (voice[renaming]) { voice[renaming].status = "none"; voice[renaming].pendingName = null; } }
+    } else { delete names[renaming]; const v = voice[renaming]; if (v) { if (v.enrolled) unenroll(v); v.status = "none"; v.pendingName = null; } }
     repaintSpeaker(renaming);
     $("nameSheet").classList.remove("open"); renaming = null;
   }
