@@ -29,7 +29,13 @@
   .who{display:inline-block;font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;margin-bottom:4px;cursor:pointer;user-select:none}
   .en{font-size:var(--fs);line-height:1.35}
   .ru{font-size:calc(var(--fs) * .72);line-height:1.35;color:var(--muted);margin-top:3px}
-  body.hide-ru .ru{display:none}
+  body.hide-ru:not(.split) .ru{display:none}
+  .pairs{display:none}
+  body.split .block > .en, body.split .block > .ru{display:none}
+  body.split .pairs{display:block}
+  .pair{display:grid;grid-template-columns:1fr 1fr;column-gap:12px;margin-bottom:6px}
+  .pair > div{font-size:calc(var(--fs) * .85);line-height:1.35}
+  .pair > div + div{border-left:1px solid var(--line);padding-left:12px}
   .pending{opacity:.55}
   .divider{text-align:center;color:var(--muted);font-size:12px;margin:14px 0}
   #live{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));padding:8px 14px;
@@ -68,6 +74,7 @@
   <button id="startBtn">Start</button>
   <button id="listenBtn">🔈 Listen</button>
   <button id="ruBtn" class="on">RU</button>
+  <button id="splitBtn">EN|RU</button>
   <button id="moreBtn">⋯</button>
 </footer>
 
@@ -138,6 +145,7 @@
   let fontSize = store.get("sl.fs", 20);
   let knownNames = store.get("sl.names", []);
   let showRu   = store.get("sl.ru", true);
+  let split    = store.get("sl.split", false);
 
   let running = false, ws = null, audioCtx = null, stream = null, node = null, source = null;
   let wakeLock = null, startedAt = 0, secondsUsed = store.get("sl.secs", 0), tick = null;
@@ -154,6 +162,8 @@
   document.documentElement.style.setProperty("--fs", fontSize + "px");
   document.body.classList.toggle("hide-ru", !showRu);
   $("ruBtn").classList.toggle("on", showRu);
+  document.body.classList.toggle("split", split);
+  $("splitBtn").classList.toggle("on", split);
 
   function setStatus(t, isLive){ statusEl.textContent = t; statusEl.classList.toggle("live", !!isLive); }
 
@@ -172,8 +182,9 @@
     const whoEl = document.createElement("span"); whoEl.className = "who";
     const enEl = document.createElement("div"); enEl.className = "en";
     const ruEl = document.createElement("div"); ruEl.className = "ru";
-    el.append(whoEl, enEl, ruEl);
-    const b = { speaker, en:"", ru:"", el, enEl, ruEl, whoEl, spoken:0 };
+    const pairsEl = document.createElement("div"); pairsEl.className = "pairs";
+    el.append(whoEl, enEl, ruEl, pairsEl);
+    const b = { speaker, en:"", ru:"", el, enEl, ruEl, whoEl, pairsEl, spoken:0 };
     whoEl.addEventListener("click", () => openRename(b.speaker));
     paintWho(b);
     main.appendChild(el);
@@ -185,7 +196,20 @@
     const c = speakerColor(b.speaker);
     b.whoEl.style.background = c + "33"; b.whoEl.style.color = c;
   }
-  function paint(b){ b.enEl.textContent = b.en.trim(); b.ruEl.textContent = b.ru.trim(); }
+  function sentences(t){ return (t.trim().match(/[^.!?…]+[.!?…]+["»)]*\s*|[^.!?…]+$/g) || []).map(s => s.trim()).filter(Boolean); }
+  function paint(b){
+    b.enEl.textContent = b.en.trim(); b.ruEl.textContent = b.ru.trim();
+    // split view: pair sentences side by side when the counts match, otherwise show the whole turn side by side
+    const en = sentences(b.en), ru = sentences(b.ru);
+    const rows = (en.length > 1 && en.length === ru.length) ? en.map((s, i) => [s, ru[i]]) : [[b.en.trim(), b.ru.trim()]];
+    b.pairsEl.textContent = "";
+    for (const [e, r] of rows) {
+      const row = document.createElement("div"); row.className = "pair";
+      const a = document.createElement("div"); a.textContent = e;
+      const c = document.createElement("div"); c.textContent = r;
+      row.append(a, c); b.pairsEl.appendChild(row);
+    }
+  }
 
   function divider(text){
     const d = document.createElement("div"); d.className = "divider"; d.textContent = text;
@@ -488,6 +512,11 @@
   $("ruBtn").addEventListener("click", () => {
     showRu = !showRu; store.set("sl.ru", showRu);
     document.body.classList.toggle("hide-ru", !showRu); $("ruBtn").classList.toggle("on", showRu);
+  });
+  $("splitBtn").addEventListener("click", () => {
+    split = !split; store.set("sl.split", split);
+    document.body.classList.toggle("split", split); $("splitBtn").classList.toggle("on", split);
+    scrollDown();
   });
   $("listenBtn").addEventListener("click", () => {
     listenOn = !listenOn;
