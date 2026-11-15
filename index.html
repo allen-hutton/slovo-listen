@@ -169,7 +169,7 @@
   let fontSize = store.get("sl.fs", 20);
   let knownNames = store.get("sl.names", []);
   let showRu   = store.get("sl.ru", true);
-  let voiceOn  = store.get("sl.voiceOn", true);
+  let voiceOn  = store.get("sl.voiceOn2", false);   // off by default: on-device matching proved unreliable in real rooms
   let strict   = store.get("sl.strict2", 0.90);   // v2.1: stricter default (0.86 guessed too often in real rooms)
   let profiles = store.get("sl.voices", {});   // name -> { embs: [[512 floats]], updated }
   let split    = store.get("sl.split", false);
@@ -721,7 +721,7 @@
   }
   $("modelLoad").addEventListener("click", () => { loadVoiceModel(); renderModelState(); });
   $("voiceToggle").addEventListener("click", () => {
-    voiceOn = !voiceOn; store.set("sl.voiceOn", voiceOn);
+    voiceOn = !voiceOn; store.set("sl.voiceOn2", voiceOn);
     if (voiceOn && running) loadVoiceModel();
     renderVoices();
   });
