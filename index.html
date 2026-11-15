@@ -134,6 +134,8 @@
     <div class="row">
       <button id="voiceToggle" style="flex:1"></button>
     </div>
+    <p class="note" id="modelState"></p>
+    <div class="row"><button id="modelLoad" style="flex:1">Download voice model now</button></div>
     <label>Auto-name strictness <span id="strictVal"></span></label>
     <div class="row">
       <button id="strictDown" style="flex:1">Looser</button>
@@ -503,7 +505,7 @@
   let ringPos = 0, connSent = 0;          // samples sent on this connection
   let runs = {};                          // speaker -> {start,end} ms of current continuous speech
   let voice = {};                         // speaker -> {clips, secs, evalAt, status, suggest, score, emb, pendingName, busy}
-  let worker = null, modelReady = false, modelFailed = false, reqId = 0;
+  let worker = null, modelReady = false, modelFailed = false, reqId = 0, modelPct = 0, modelMsg = "";
   const pending = new Map();
 
   function resetVoiceSession(){ runs = {}; voice = {}; connSent = 0; ringPos = 0; }
@@ -545,11 +547,11 @@
     } catch (e) { modelFailed = true; setVStatus("voice off"); return; }
     worker.onmessage = e => {
       const m = e.data;
-      if (m.type === "progress") setVStatus(m.pct < 100 ? "voice model " + m.pct + "%" : "loading voice model…");
-      else if (m.type === "ready") { modelReady = true; setVStatus(""); Object.keys(voice).forEach(maybeIdentify); }
+      if (m.type === "progress") { modelPct = m.pct; setVStatus(m.pct < 100 ? "voice model " + m.pct + "%" : "loading voice model…"); }
+      else if (m.type === "ready") { modelReady = true; setVStatus("voice ✓"); setTimeout(() => { if ($("vstatus").textContent === "voice ✓") setVStatus(""); }, 4000); Object.keys(voice).forEach(maybeIdentify); }
       else if (m.type === "emb" || m.type === "error") {
         const cb = pending.get(m.id); pending.delete(m.id);
-        if (m.type === "error" && m.id == null) { modelFailed = true; setVStatus("voice model failed"); divider("Voice model couldn't load: " + m.message); }
+        if (m.type === "error" && m.id == null) { modelFailed = true; modelMsg = m.message; setVStatus("voice model failed"); divider("Voice model couldn't load: " + m.message); }
         if (cb) cb(m.type === "emb" ? m.emb : null);
       }
     };
@@ -557,7 +559,16 @@
     setVStatus("voice model…");
     worker.postMessage({ type: "load" });
   }
-  function setVStatus(t){ $("vstatus").textContent = t; }
+  function setVStatus(t){ $("vstatus").textContent = t; if ($("moreSheet").classList.contains("open")) renderModelState(); }
+  function renderModelState(){
+    let t;
+    if (modelReady) t = "Voice model: ready ✓ (saved on this phone)";
+    else if (modelFailed) t = "Voice model: failed to load" + (modelMsg ? " — " + modelMsg : "") + ". Reload the page to retry.";
+    else if (worker) t = modelPct && modelPct < 100 ? "Voice model: downloading " + modelPct + "%…" : "Voice model: loading…";
+    else t = "Voice model: not loaded yet (loads when you tap Start, or tap the button below).";
+    $("modelState").textContent = t;
+    $("modelLoad").style.display = (modelReady || worker) ? "none" : "";
+  }
 
   function embed(audio){
     return new Promise(res => {
@@ -628,6 +639,7 @@
   function repaintSpeaker(spk){ blocks.forEach(b => { if (!b.closed && b.speaker === spk) paintWho(b); }); }
 
   function renderVoices(){
+    renderModelState();
     $("voiceToggle").textContent = voiceOn ? "Voice recognition: ON" : "Voice recognition: OFF";
     $("voiceToggle").classList.toggle("on", voiceOn);
     $("strictVal").textContent = "(" + Math.round(strict * 100) + "%)";
@@ -647,6 +659,7 @@
       row.append(label, del); list.appendChild(row);
     }
   }
+  $("modelLoad").addEventListener("click", () => { loadVoiceModel(); renderModelState(); });
   $("voiceToggle").addEventListener("click", () => {
     voiceOn = !voiceOn; store.set("sl.voiceOn", voiceOn);
     if (voiceOn && running) loadVoiceModel();
