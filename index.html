@@ -62,6 +62,17 @@
   .toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
   .toggle span{font-size:15px}
   .toggle button{flex:0 0 76px}
+  #gist{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));height:38vh;display:none;flex-direction:column;
+    background:#15181c;border-top:2px solid var(--accent);z-index:4}
+  body.gist-on #gist{display:flex}
+  body.gist-on #main{padding-bottom:calc(38vh + 90px)}
+  body.gist-on #live{display:none}
+  #gistHead{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line)}
+  #gistHead b{font-size:14px}
+  #gistMeta{flex:1;font-size:12px;color:var(--muted)}
+  #gistHead button{padding:6px 10px}
+  #gistBody{flex:1;overflow-y:auto;padding:10px 14px 14px;font-size:calc(var(--fs) * .9);line-height:1.45;white-space:pre-wrap;-webkit-overflow-scrolling:touch}
+  #gistBody .muted{color:var(--muted)}
   #empty{color:var(--muted);text-align:center;margin-top:30vh;line-height:1.5;padding:0 20px}
 </style>
 </head>
@@ -81,10 +92,14 @@
 <footer>
   <button id="startBtn">Start</button>
   <button id="listenBtn">🔈 Listen</button>
-  <button id="ruBtn" class="on">RU</button>
-  <button id="splitBtn">EN|RU</button>
+  <button id="gistBtn">✦ Gist</button>
   <button id="moreBtn">⋯</button>
 </footer>
+
+<div id="gist">
+  <div id="gistHead"><b>What they're talking about</b><span id="gistMeta"></span><button id="gistRefresh" aria-label="Refresh">↻</button></div>
+  <div id="gistBody"><span class="muted">The gist appears here about once a minute while people talk.</span></div>
+</div>
 
 <!-- Rename sheet -->
 <div class="sheet" id="nameSheet">
@@ -110,6 +125,9 @@
     <h2>Settings</h2>
     <label for="keyInput">Soniox API key (stored only on this phone)</label>
     <input id="keyInput" type="password" autocomplete="off" placeholder="snx_…">
+
+    <label for="claudeKeyInput">Claude API key — for the Gist panel (stored only on this phone)</label>
+    <input id="claudeKeyInput" type="password" autocomplete="off" placeholder="sk-ant-…">
 
     <h3>The room</h3>
     <label>People talking</label>
@@ -138,6 +156,8 @@
     <label for="modelInput">Model ("auto" = newest Soniox accepts)</label>
     <input id="modelInput" autocomplete="off">
     <div class="toggle"><span>First-version settings (to compare)</span><button id="basicBtn">Off</button></div>
+    <label for="gistModelInput">Gist model</label>
+    <input id="gistModelInput" autocomplete="off">
     <p class="note" id="cfgNote"></p>
 
     <div class="row">
@@ -152,7 +172,12 @@
 <!-- More sheet -->
 <div class="sheet" id="moreSheet">
   <div class="card">
-    <h2>Transcript</h2>
+    <h2>Display</h2>
+    <div class="row" style="margin-top:0">
+      <button id="ruBtn" class="on">Russian lines</button>
+      <button id="splitBtn">EN | RU side by side</button>
+    </div>
+    <h2 style="margin-top:18px">Transcript</h2>
     <div class="row">
       <button id="copyBtn">Copy transcript</button>
       <button id="clearBtn">Clear</button>
@@ -174,8 +199,8 @@
     get(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
     set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
   };
-  // clean up data from removed features (voiceprints, summary key)
-  ["sl.voices","sl.voiceOn","sl.voiceOn2","sl.strict","sl.strict2","sl.anthKey","sl.anthModel"].forEach(k => { try { localStorage.removeItem(k); } catch(e){} });
+  // clean up data from removed features (voiceprints)
+  ["sl.voices","sl.voiceOn","sl.voiceOn2","sl.strict","sl.strict2"].forEach(k => { try { localStorage.removeItem(k); } catch(e){} });
 
   // ---------- settings ----------
   let apiKey     = store.get("sl.key", "");
@@ -192,6 +217,8 @@
   let showRu     = store.get("sl.ru", true);
   let split      = store.get("sl.split", false);
   let secondsUsed = store.get("sl.secs", 0);
+  let claudeKey  = store.get("sl.claudeKey", "") || store.get("sl.anthKey", "");
+  let gistModel  = store.get("sl.gistModel", "claude-haiku-5-5");
 
   // ---------- session state ----------
   let running = false, ws = null, audioCtx = null, stream = null, node = null, source = null;
@@ -488,7 +515,8 @@
     reconnecting = false;
     if (running) { divider("Connection lost. Tap Start to try again."); stop(); }
   }
-  function closeAllBlocks(){ blocks.forEach(b => b.closed = true); }
+  // speaker numbers restart with each connection, so lock in the names earlier lines already have
+  function closeAllBlocks(){ blocks.forEach(b => { if (!b.closed) { if (!b.nameOverride && names[b.speaker]) b.nameOverride = names[b.speaker]; b.closed = true; } }); }
 
   // ---------- start / stop ----------
   async function start(){
@@ -583,6 +611,7 @@
   function openSettings(){
     draft = { people, enIsMe, showLive, basic };
     $("keyInput").value = apiKey; $("modelInput").value = model; $("termsInput").value = extraTerms;
+    $("claudeKeyInput").value = claudeKey; $("gistModelInput").value = gistModel;
     $("notesInput").value = notes; $("myNameInput").value = myName;
     $("pplVal").textContent = draft.people;
     paintToggle("enMeBtn", draft.enIsMe); paintToggle("liveBtn", draft.showLive); paintToggle("basicBtn", draft.basic);
@@ -604,6 +633,8 @@
     store.set("sl.key", apiKey); store.set("sl.model2", model); store.set("sl.terms", extraTerms);
     store.set("sl.notes", notes); store.set("sl.myName", myName); store.set("sl.people", people);
     store.set("sl.enIsMe", enIsMe); store.set("sl.showLive", showLive); store.set("sl.basic", basic);
+    claudeKey = $("claudeKeyInput").value.trim(); gistModel = $("gistModelInput").value.trim() || "claude-haiku-5-5";
+    store.set("sl.claudeKey", claudeKey); store.set("sl.gistModel", gistModel);
     applyDisplay();
     blocks.forEach(b => { if (!b.closed) paintWho(b); });
     $("setSheet").classList.remove("open");
@@ -631,6 +662,70 @@
     }
   });
 
+  // ---------- Gist: running narrative from Claude ----------
+  const GIST_SYSTEM = [
+    "You help Allen follow a family conversation in Bishkek, Kyrgyzstan. It is mostly in Russian; Allen speaks English and very little Russian.",
+    "You receive machine-translated transcript lines (speaker labels and translations can be wrong) plus your previous summary.",
+    "Reply in plain English with exactly two parts:",
+    "Now: 2–4 short sentences on what is being discussed right now and the mood (joking, planning, arguing, telling a story…), and who is driving it if that is clear.",
+    "Earlier: up to 6 earlier topics, newest first, one short line each starting with '• ', carried over and updated from your previous summary. Omit this part if there are none yet.",
+    "Give the general picture, not a line-by-line retelling. Do not invent details; if it's unclear, say so briefly. No quotes."
+  ].join(" ");
+  let gistOn = false, gistText = "", gistBusy = false, gistLastCall = 0, gistTimer = null;
+  function pendingGistLines(){
+    const lines = [];
+    for (const b of blocks) {
+      const from = b.gistLen || 0;
+      const add = b.en.slice(from).trim();
+      if (add) lines.push(blockName(b) + ": " + add);
+    }
+    return lines;
+  }
+  function markGistSent(){ blocks.forEach(b => b.gistLen = b.en.length); }
+  function setGistBody(text, muted){
+    const body = $("gistBody"); body.textContent = "";
+    const span = document.createElement("span"); if (muted) span.className = "muted"; span.textContent = text;
+    body.appendChild(span);
+  }
+  async function updateGist(force){
+    if (gistBusy) return;
+    if (!claudeKey) { setGistBody("Add your Claude API key in Settings (⚙︎) to see the gist.", true); return; }
+    const lines = pendingGistLines();
+    const newChars = lines.join(" ").length;
+    if (!force && (newChars < 160 || Date.now() - gistLastCall < 45000)) return;
+    if (!lines.length) { if (force && !gistText) setGistBody("Nothing settled to summarize yet.", true); return; }
+    gistBusy = true; gistLastCall = Date.now();
+    $("gistMeta").textContent = "updating…";
+    let newText = lines.join("\n");
+    if (newText.length > 12000) newText = newText.slice(-12000);
+    try {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-api-key": claudeKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        body: JSON.stringify({ model: gistModel, max_tokens: 500, system: GIST_SYSTEM,
+          messages: [{ role: "user", content: "Previous summary:\n" + (gistText || "(none yet)") + "\n\nNew transcript lines:\n" + newText }] })
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error((data.error && data.error.message) || ("HTTP " + r.status));
+      const out = (data.content || []).filter(c => c.type === "text").map(c => c.text).join("").trim();
+      if (out) { gistText = out; markGistSent(); setGistBody(gistText); }
+      $("gistMeta").textContent = "updated " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch (e) {
+      $("gistMeta").textContent = "";
+      setGistBody((gistText ? gistText + "\n\n" : "") + "(Couldn't update: " + (e && e.message ? e.message : e) + ")", !gistText);
+    } finally { gistBusy = false; }
+  }
+  function setGist(on){
+    gistOn = on;
+    document.body.classList.toggle("gist-on", on);
+    $("gistBtn").classList.toggle("on", on);
+    clearInterval(gistTimer);
+    if (on) { gistTimer = setInterval(() => { if (running) updateGist(false); }, 15000); updateGist(!gistText); }
+    scrollDown();
+  }
+  $("gistBtn").addEventListener("click", () => setGist(!gistOn));
+  $("gistRefresh").addEventListener("click", () => updateGist(true));
+
   // ---------- transcript ----------
   $("moreBtn").addEventListener("click", () => { $("copyNote").textContent = ""; $("moreSheet").classList.add("open"); });
   $("moreClose").addEventListener("click", () => $("moreSheet").classList.remove("open"));
@@ -639,11 +734,14 @@
     try { await navigator.clipboard.writeText(text); $("copyNote").textContent = "Copied."; }
     catch(e){ $("copyNote").textContent = "Copy was blocked by the browser."; }
   });
-  $("clearBtn").addEventListener("click", () => { blocks.length = 0; main.innerHTML = ""; live.textContent = ""; $("moreSheet").classList.remove("open"); });
+  $("clearBtn").addEventListener("click", () => {
+    blocks.length = 0; main.innerHTML = ""; live.textContent = ""; $("moreSheet").classList.remove("open");
+    gistText = ""; $("gistMeta").textContent = ""; setGistBody("The gist appears here about once a minute while people talk.", true);
+  });
   document.querySelectorAll(".sheet").forEach(s => s.addEventListener("click", e => { if (e.target === s) s.classList.remove("open"); }));
 
   if (!apiKey) setTimeout(openSettings, 300);
-  window.__sl = { handleTokens, blocks, buildConfig, ladder };
+  window.__sl = { handleTokens, blocks, buildConfig, ladder, updateGist };
 })();
 </script>
 </body>
