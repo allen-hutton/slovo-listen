@@ -21,6 +21,10 @@
   header h1{font-size:17px;margin:0;flex:1;font-weight:600}
   #status{font-size:13px;color:var(--muted)}
   #status.live{color:var(--rec)}
+  #level{width:44px;height:8px;border-radius:4px;background:#2a2e34;overflow:hidden;display:none}
+  body.running #level{display:block}
+  #level i{display:block;height:100%;width:0;background:var(--ok);transition:width .12s}
+  #level.hot i{background:var(--rec)}
   #hearing{width:9px;height:9px;border-radius:50%;background:var(--muted);opacity:.25;transition:opacity .3s}
   #hearing.on{background:var(--rec);opacity:1}
   button{font:inherit;color:var(--text);background:#262a30;border:1px solid var(--line);border-radius:10px;padding:8px 12px}
@@ -79,6 +83,7 @@
 <body>
 <header>
   <h1>Slovo Listen</h1>
+  <span id="level" title="microphone level"><i></i></span>
   <span id="hearing" title="hearing speech"></span>
   <span id="status">Idle</span>
   <button id="settingsBtn" aria-label="Settings">⚙︎</button>
@@ -177,6 +182,9 @@
       <button id="ruBtn" class="on">Russian lines</button>
       <button id="splitBtn">EN | RU side by side</button>
     </div>
+    <h2 style="margin-top:18px">Audio check</h2>
+    <div class="row" style="margin-top:0"><button id="playBack">🎧 Play the last 10 seconds Soniox heard</button></div>
+    <p class="note" id="playNote">Use earbuds, or play it after people pause. If voices sound faint, muffled or far away here, better audio will help more than any setting.</p>
     <h2 style="margin-top:18px">Transcript</h2>
     <div class="row">
       <button id="copyBtn">Copy transcript</button>
@@ -367,6 +375,18 @@
     }
     registerProcessor("grab", Grab);`;
   let resampleBuf = [], ratio = 3, sendBuf = [], sendLen = 0;
+  const HIST = TARGET_RATE * 15, hist = new Int16Array(HIST); let histPos = 0, histFill = 0;
+  function keepHistory(pkt){
+    for (let i = 0; i < pkt.length; i++) { hist[histPos] = pkt[i]; histPos = (histPos + 1) % HIST; }
+    histFill = Math.min(HIST, histFill + pkt.length);
+    // level meter: RMS of this packet on a dB scale
+    let s = 0; for (let i = 0; i < pkt.length; i++) s += pkt[i] * pkt[i];
+    const rms = Math.sqrt(s / Math.max(1, pkt.length)) / 32768;
+    const db = 20 * Math.log10(rms + 1e-6);                 // -120 … 0
+    const pct = Math.max(0, Math.min(100, (db + 60) / 60 * 100));
+    $("level").firstChild.style.width = pct + "%";
+    $("level").classList.toggle("hot", db > -3);
+  }
   function onAudio(f32){
     let all = f32;
     if (resampleBuf.length) { all = new Float32Array(resampleBuf.length + f32.length); all.set(resampleBuf); all.set(f32, resampleBuf.length); }
@@ -383,6 +403,7 @@
       const pkt = new Int16Array(sendLen); let p = 0;
       for (const b of sendBuf) { pkt.set(b, p); p += b.length; }
       sendBuf = []; sendLen = 0;
+      keepHistory(pkt);
       if (ws && ws.readyState === 1) ws.send(pkt.buffer);
     }
   }
@@ -420,6 +441,23 @@
     try { audioCtx && audioCtx.close(); } catch(e){}
     node = source = stream = audioCtx = null; resampleBuf = []; sendBuf = []; sendLen = 0;
   }
+
+  // ---------- hear what Soniox hears ----------
+  $("playBack").addEventListener("click", async () => {
+    const n = Math.min(histFill, TARGET_RATE * 10);
+    if (n < TARGET_RATE) { $("playNote").textContent = "Start listening first, then try again after a few seconds."; return; }
+    try {
+      const out = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = out.createBuffer(1, n, TARGET_RATE);
+      const ch = buf.getChannelData(0);
+      let pos = (histPos - n + HIST) % HIST;
+      for (let i = 0; i < n; i++) { ch[i] = hist[pos] / 32768; pos = (pos + 1) % HIST; }
+      const src = out.createBufferSource(); src.buffer = buf; src.connect(out.destination);
+      src.onended = () => { try { out.close(); } catch(e){} };
+      await out.resume(); src.start();
+      $("playNote").textContent = "Playing " + (n / TARGET_RATE).toFixed(0) + " seconds of exactly what was sent to Soniox…";
+    } catch (e) { $("playNote").textContent = "Couldn't play: " + (e.message || e); }
+  });
 
   // ---------- Soniox configuration ----------
   // Richest settings first; if Soniox rejects something, step down. "First-version settings" skips straight to basic.
@@ -530,7 +568,7 @@
       if (blocks.length) { closeAllBlocks(); divider("— new session · " + new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) + " —"); }
       names = {}; lastSpeaker = null;
       if (label) divider("Mic: " + label);
-      $("startBtn").textContent = "Stop"; $("startBtn").classList.add("live");
+      $("startBtn").textContent = "Stop"; $("startBtn").classList.add("live"); document.body.classList.add("running");
       setStatus("Listening", true);
       tick = setInterval(() => { secondsUsed += 1; if (secondsUsed % 15 === 0) store.set("sl.secs", secondsUsed); }, 1000);
       requestWake();
@@ -548,7 +586,7 @@
     clearInterval(tick); store.set("sl.secs", secondsUsed);
     releaseWake();
     live.textContent = ""; $("hearing").classList.remove("on");
-    $("startBtn").textContent = "Start"; $("startBtn").classList.remove("live");
+    $("startBtn").textContent = "Start"; $("startBtn").classList.remove("live"); document.body.classList.remove("running");
     setStatus("Idle");
   }
 
@@ -665,11 +703,11 @@
   // ---------- Gist: running narrative from Claude ----------
   const GIST_SYSTEM = [
     "You help Allen follow a family conversation in Bishkek, Kyrgyzstan. It is mostly in Russian; Allen speaks English and very little Russian.",
-    "You receive machine-translated transcript lines (speaker labels and translations can be wrong) plus your previous summary.",
+    "You receive machine-translated transcript lines plus your previous summary. The lines come from one phone on a busy table, so some are fragments, mislabeled or mistranslated — work around that silently.",
     "Reply in plain English with exactly two parts:",
     "Now: 2–4 short sentences on what is being discussed right now and the mood (joking, planning, arguing, telling a story…), and who is driving it if that is clear.",
     "Earlier: up to 6 earlier topics, newest first, one short line each starting with '• ', carried over and updated from your previous summary. Omit this part if there are none yet.",
-    "Give the general picture, not a line-by-line retelling. Do not invent details; if it's unclear, say so briefly. No quotes."
+    "Give your best reading of the general picture, not a line-by-line retelling. Never mention the transcript, translation quality, fragments or garbling. Leave out anything that makes no sense rather than commenting on it. Do not invent details. No quotes."
   ].join(" ");
   let gistOn = false, gistText = "", gistBusy = false, gistLastCall = 0, gistTimer = null;
   function pendingGistLines(){
