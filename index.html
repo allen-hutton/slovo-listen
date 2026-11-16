@@ -21,13 +21,15 @@
   header h1{font-size:17px;margin:0;flex:1;font-weight:600}
   #status{font-size:13px;color:var(--muted)}
   #status.live{color:var(--rec)}
+  #hearing{width:9px;height:9px;border-radius:50%;background:var(--muted);opacity:.25;transition:opacity .3s}
+  #hearing.on{background:var(--rec);opacity:1}
   button{font:inherit;color:var(--text);background:#262a30;border:1px solid var(--line);border-radius:10px;padding:8px 12px}
   button:active{opacity:.7}
   button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-  #main{flex:1;overflow-y:auto;padding:12px 14px 140px;-webkit-overflow-scrolling:touch}
-  .block{margin:0 0 16px}
+  #main{flex:1;overflow-y:auto;padding:12px 14px 120px;-webkit-overflow-scrolling:touch}
+  .block{margin:0 0 18px}
   .who{display:inline-block;font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;margin-bottom:4px;cursor:pointer;user-select:none}
-  .en{font-size:var(--fs);line-height:1.35}
+  .en{font-size:var(--fs);line-height:1.4}
   .ru{font-size:calc(var(--fs) * .72);line-height:1.35;color:var(--muted);margin-top:3px}
   body.hide-ru:not(.split) .ru{display:none}
   .pairs{display:none}
@@ -36,10 +38,10 @@
   .pair{display:grid;grid-template-columns:1fr 1fr;column-gap:12px;margin-bottom:6px}
   .pair > div{font-size:calc(var(--fs) * .85);line-height:1.35}
   .pair > div + div{border-left:1px solid var(--line);padding-left:12px}
-  .pending{opacity:.55}
   .divider{text-align:center;color:var(--muted);font-size:12px;margin:14px 0}
   #live{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));padding:8px 14px;
     background:linear-gradient(transparent,var(--bg) 30%);font-size:calc(var(--fs) * .85);color:var(--muted);min-height:20px}
+  body:not(.show-live) #live{display:none}
   footer{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));
     background:var(--panel);border-top:1px solid var(--line)}
   footer button{flex:1;padding:12px 6px}
@@ -48,79 +50,33 @@
   .sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:10}
   .sheet.open{display:flex}
   .sheet .card{background:var(--panel);width:100%;border-radius:16px 16px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom));
-    max-height:85vh;overflow-y:auto}
+    max-height:88vh;overflow-y:auto}
   .card h2{margin:0 0 10px;font-size:17px}
+  .card h3{margin:18px 0 4px;font-size:14px;color:var(--muted)}
   .card label{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
-  .card input{width:100%;font:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0d0f11;color:var(--text)}
+  .card input,.card textarea{width:100%;font:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0d0f11;color:var(--text)}
   .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-  .chips button{padding:6px 12px;border-radius:999px}
-  .note{font-size:13px;color:var(--muted);line-height:1.4;margin-top:10px}
-  .who.suggest{background:transparent !important;border:1px dashed currentColor;font-style:italic}
-  .ok{display:none;margin-left:6px;font-size:13px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid var(--ok);color:var(--ok);background:transparent;cursor:pointer;vertical-align:top}
-  .ok.show{display:inline-block}
-  .dur{font-size:11px;color:var(--muted);margin-left:6px;vertical-align:middle}
-  .dur.saved{color:var(--ok)}
-  #nameSheet .scope button{flex:1}
-  #sampleBox{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
-  .who .tag{font-weight:400;opacity:.7;margin-left:4px;font-size:11px}
-  #vstatus{font-size:12px;color:var(--muted)}
-  .voice-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
-  .voice-row span{flex:1}
-  .voice-row small{color:var(--muted)}
-  #sumBtn{position:fixed;right:12px;bottom:calc(118px + env(safe-area-inset-bottom));z-index:5;
-    background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;border-radius:999px;padding:10px 16px;box-shadow:0 4px 14px rgba(0,0,0,.4)}
-  body.selecting .block{cursor:pointer;border-left:3px solid var(--line);padding-left:9px;margin-left:-12px}
-  body.selecting .block.sel{border-left-color:var(--accent);background:#4fa3ff1f}
-  body.selecting #live, body.selecting #sumBtn{display:none}
-  #selBar{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));display:none;flex-wrap:wrap;gap:8px;
-    padding:10px 12px;background:var(--panel);border-top:1px solid var(--line);z-index:6}
-  body.selecting #selBar{display:flex}
-  #selBar .hint{width:100%;font-size:13px;color:var(--muted)}
-  #selBar button{flex:1}
-  #sumText{font-size:calc(var(--fs) * 1.15);line-height:1.45;white-space:pre-wrap;margin:6px 0 4px;min-height:2em}
-  #sumMeta{font-size:12px;color:var(--muted)}
+  .row > button{flex:1}
+  .chips button{flex:0 0 auto;padding:6px 12px;border-radius:999px}
+  .note{font-size:13px;color:var(--muted);line-height:1.4;margin-top:8px}
+  .toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
+  .toggle span{font-size:15px}
+  .toggle button{flex:0 0 76px}
   #empty{color:var(--muted);text-align:center;margin-top:30vh;line-height:1.5;padding:0 20px}
 </style>
 </head>
 <body>
 <header>
   <h1>Slovo Listen</h1>
-  <span id="vstatus"></span>
+  <span id="hearing" title="hearing speech"></span>
   <span id="status">Idle</span>
   <button id="settingsBtn" aria-label="Settings">⚙︎</button>
 </header>
 
 <div id="main">
-  <div id="empty">Put the phone in the middle of the table and tap <b>Start</b>.<br>Tap a speaker's name to label them.</div>
+  <div id="empty">Put the phone in the middle of the table and tap <b>Start</b>.<br>Text appears every few seconds, once each sentence is settled.<br>Tap a speaker's name to label them.</div>
 </div>
 <div id="live"></div>
-<button id="sumBtn">Лёше 🇷🇺</button>
-<div id="selBar">
-  <div class="hint">Tap the turns to summarize for Лёша. Tap the first and last, then “Fill gaps” to grab everything between.</div>
-  <button id="selFill">Fill gaps</button>
-  <button id="selGo" class="on">Since last</button>
-  <button id="selCancel">Cancel</button>
-</div>
-
-<!-- Russian summary sheet -->
-<div class="sheet" id="sumSheet">
-  <div class="card">
-    <h2>Кратко для Лёши</h2>
-    <div class="row chips">
-      <button id="sumSel" style="display:none">Selected</button>
-      <button id="sumNew" class="on">Since last summary</button>
-      <button id="sum5">Last 5 min</button>
-      <button id="sumAll">Whole session</button>
-    </div>
-    <div id="sumText"></div>
-    <div id="sumMeta"></div>
-    <div class="row">
-      <button id="sumSpeak" style="flex:1">🔊 Прочитать</button>
-      <button id="sumCopy" style="flex:1">Copy</button>
-      <button id="sumClose" style="flex:1">Close</button>
-    </div>
-  </div>
-</div>
 
 <footer>
   <button id="startBtn">Start</button>
@@ -133,21 +89,17 @@
 <!-- Rename sheet -->
 <div class="sheet" id="nameSheet">
   <div class="card">
-    <h2 id="nameTitle">Who is this?</h2>
-    <div class="row" id="suggestRow" style="display:none;margin:0 0 10px"><button id="suggestYes" class="on" style="flex:1"></button></div>
-    <div class="row scope">
+    <h2 id="nameTitle">Who said this?</h2>
+    <div class="row">
       <button id="scopeLine" class="on">This line only</button>
       <button id="scopeFwd">This + new lines from this speaker</button>
     </div>
-    <input id="nameInput" placeholder="Name (e.g. Mom)" autocomplete="off" style="margin-top:10px">
+    <label for="nameInput">Name</label>
+    <input id="nameInput" placeholder="e.g. Mom" autocomplete="off">
     <div class="row chips" id="knownNames"></div>
     <div class="row">
-      <button id="nameSave" class="on" style="flex:1">Save</button>
-      <button id="nameCancel" style="flex:1">Cancel</button>
-    </div>
-    <div id="sampleBox">
-      <div class="row"><button id="sampleBtn" style="flex:1"></button></div>
-      <p class="note" id="sampleNote"></p>
+      <button id="nameSave" class="on">Save</button>
+      <button id="nameCancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -158,25 +110,41 @@
     <h2>Settings</h2>
     <label for="keyInput">Soniox API key (stored only on this phone)</label>
     <input id="keyInput" type="password" autocomplete="off" placeholder="snx_…">
+
+    <h3>The room</h3>
+    <label>People talking</label>
+    <div class="row" style="margin-top:0">
+      <button id="pplDown" style="flex:0 0 56px">−</button>
+      <div id="pplVal" style="flex:1;text-align:center;font-size:20px;font-weight:600;padding-top:6px">4</div>
+      <button id="pplUp" style="flex:0 0 56px">+</button>
+    </div>
+    <label for="notesInput">About the people (helps tell voices apart)</label>
+    <textarea id="notesInput" rows="2" placeholder="e.g. Allen is a man who speaks only English. Sveta and her mother speak Russian; Sveta also speaks English with Allen. Losha is a teenage boy."></textarea>
+    <div class="toggle"><span>English lines are me</span><button id="enMeBtn">On</button></div>
+    <label for="myNameInput">My name</label>
+    <input id="myNameInput" autocomplete="off" placeholder="Allen">
+    <label for="termsInput">Names &amp; words to listen for (comma-separated, both spellings help)</label>
+    <input id="termsInput" autocomplete="off" placeholder="Sveta, Света, Bishkek, …">
+
+    <h3>Display</h3>
+    <div class="toggle"><span>Show words as they're heard (busier)</span><button id="liveBtn">Off</button></div>
+    <label>Text size</label>
+    <div class="row" style="margin-top:0">
+      <button id="fsDown">A−</button>
+      <button id="fsUp">A+</button>
+    </div>
+
+    <h3>Advanced</h3>
     <label for="modelInput">Model ("auto" = newest Soniox accepts)</label>
     <input id="modelInput" autocomplete="off">
-    <label for="termsInput">Names &amp; words to listen for (comma-separated, both spellings help: Sveta, Света)</label>
-    <input id="termsInput" autocomplete="off" placeholder="Sveta, Света, Bishkek, …">
+    <div class="toggle"><span>First-version settings (to compare)</span><button id="basicBtn">Off</button></div>
     <p class="note" id="cfgNote"></p>
-    <label for="anthKeyInput">Claude API key — for Russian summaries (stored only on this phone)</label>
-    <input id="anthKeyInput" type="password" autocomplete="off" placeholder="sk-ant-…">
-    <label for="anthModelInput">Summary model</label>
-    <input id="anthModelInput" autocomplete="off">
-    <label>Text size</label>
+
     <div class="row">
-      <button id="fsDown" style="flex:1">A−</button>
-      <button id="fsUp" style="flex:1">A+</button>
+      <button id="setSave" class="on">Save</button>
+      <button id="setClose">Close</button>
     </div>
-    <div class="row">
-      <button id="setSave" class="on" style="flex:1">Save</button>
-      <button id="setClose" style="flex:1">Close</button>
-    </div>
-    <p class="note">Keep the screen on and this page open while listening — iPhone stops the microphone when the phone locks or you switch apps. Plug the USB‑C mic in <i>before</i> tapping Start.</p>
+    <p class="note">Keep the screen on and this page open while listening — iPhone stops the microphone when the phone locks or you switch apps.</p>
     <p class="note" id="costNote"></p>
   </div>
 </div>
@@ -186,25 +154,11 @@
   <div class="card">
     <h2>Transcript</h2>
     <div class="row">
-      <button id="copyBtn" style="flex:1">Copy transcript</button>
-      <button id="clearBtn" style="flex:1">Clear</button>
+      <button id="copyBtn">Copy transcript</button>
+      <button id="clearBtn">Clear</button>
     </div>
     <p class="note" id="copyNote"></p>
-    <h2 style="margin-top:18px">Voices</h2>
-    <div class="row">
-      <button id="voiceToggle" style="flex:1"></button>
-    </div>
-    <p class="note" id="modelState"></p>
-    <div class="row"><button id="modelLoad" style="flex:1">Download voice model now</button></div>
-    <label>Auto-name strictness <span id="strictVal"></span></label>
-    <div class="row">
-      <button id="strictDown" style="flex:1">Looser</button>
-      <button id="strictUp" style="flex:1">Stricter</button>
-    </div>
-    <div id="voiceList"></div>
-    <div class="row"><button id="forgetAll" style="flex:1">Forget all voices</button></div>
-    <p class="note" id="voiceNote">Voiceprints are saved only on this phone. Voice samples come only from lines you choose: tap a line's name → “Save as voice sample”. Pick long lines (the seconds are shown next to each name) where only that person was talking. With more samples, guesses come sooner.</p>
-    <div class="row"><button id="moreClose" style="flex:1">Close</button></div>
+    <div class="row"><button id="moreClose">Close</button></div>
   </div>
 </div>
 
@@ -215,65 +169,65 @@
   const TARGET_RATE = 16000;
   const COLORS = ["#4fa3ff","#ffb347","#3ecf8e","#ff7eb6","#b39cff","#5ad1d1","#ffd166","#ff8a65"];
 
-  // ---------- storage helpers (may throw in some contexts) ----------
+  // ---------- storage ----------
   const store = {
     get(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
     set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
   };
+  // clean up data from removed features (voiceprints, summary key)
+  ["sl.voices","sl.voiceOn","sl.voiceOn2","sl.strict","sl.strict2","sl.anthKey","sl.anthModel"].forEach(k => { try { localStorage.removeItem(k); } catch(e){} });
 
-  // ---------- state ----------
-  let apiKey   = store.get("sl.key", "");
-  let model    = store.get("sl.model2", "auto");     // auto = newest model Soniox accepts
-  let extraTerms = store.get("sl.terms", "");         // names/words to help recognition (kept on this phone)
-  let cfgLevel = 0, activeCfg = "";
-  let fontSize = store.get("sl.fs", 20);
+  // ---------- settings ----------
+  let apiKey     = store.get("sl.key", "");
+  let model      = store.get("sl.model2", "auto");
+  let extraTerms = store.get("sl.terms", "");
+  let people     = store.get("sl.people", 4);
+  let notes      = store.get("sl.notes", "");
+  let enIsMe     = store.get("sl.enIsMe", true);
+  let myName     = store.get("sl.myName", "Allen");
+  let showLive   = store.get("sl.showLive", false);
+  let basic      = store.get("sl.basic", false);
+  let fontSize   = store.get("sl.fs", 20);
   let knownNames = store.get("sl.names", []);
-  let showRu   = store.get("sl.ru", true);
-  let anthKey  = store.get("sl.anthKey", "");
-  let anthModel = store.get("sl.anthModel", "claude-sonnet-5-5");
-  let lastSummaryAt = 0;
-  let selecting = false; const selected = new Set(); let selSnapshot = [];
-  let voiceOn  = store.get("sl.voiceOn2", false);   // off by default: on-device matching proved unreliable in real rooms
-  let strict   = store.get("sl.strict2", 0.90);   // v2.1: stricter default (0.86 guessed too often in real rooms)
-  let profiles = store.get("sl.voices", {});   // name -> { embs: [[512 floats]], updated }
-  let split    = store.get("sl.split", false);
+  let showRu     = store.get("sl.ru", true);
+  let split      = store.get("sl.split", false);
+  let secondsUsed = store.get("sl.secs", 0);
 
+  // ---------- session state ----------
   let running = false, ws = null, audioCtx = null, stream = null, node = null, source = null;
-  let wakeLock = null, startedAt = 0, secondsUsed = store.get("sl.secs", 0), tick = null;
-  let reconnecting = false;
-
-  const blocks = [];          // {speaker, en, ru, el, enEl, ruEl, whoEl, spoken}
-  let names = {};             // session: speaker number -> name
+  let wakeLock = null, tick = null, reconnecting = false, cfgLevel = 0, activeCfg = "";
+  const blocks = [];          // {speaker, en, ru, src, nameOverride, closed, el, enEl, ruEl, whoEl, pairsEl, spoken}
+  let names = {};             // session: speaker number -> name (from "this + new lines")
   let lastSpeaker = null;
-  let listenOn = false, lastSpokenSpeaker = null;
+  let listenOn = false, lastSpokenName = null;
 
-  // ---------- DOM ----------
   const $ = id => document.getElementById(id);
   const main = $("main"), live = $("live"), statusEl = $("status");
-  document.documentElement.style.setProperty("--fs", fontSize + "px");
-  document.body.classList.toggle("hide-ru", !showRu);
-  $("ruBtn").classList.toggle("on", showRu);
-  document.body.classList.toggle("split", split);
-  $("splitBtn").classList.toggle("on", split);
 
+  function applyDisplay(){
+    document.documentElement.style.setProperty("--fs", fontSize + "px");
+    document.body.classList.toggle("hide-ru", !showRu);
+    document.body.classList.toggle("split", split);
+    document.body.classList.toggle("show-live", showLive);
+    $("ruBtn").classList.toggle("on", showRu);
+    $("splitBtn").classList.toggle("on", split);
+  }
+  applyDisplay();
   function setStatus(t, isLive){ statusEl.textContent = t; statusEl.classList.toggle("live", !!isLive); }
 
-  function speakerName(s){ return names[s] || ("Speaker " + s); }
-  function blockName(b){ return b.nameOverride || names[b.speaker] || ("Speaker " + b.speaker); }
-  function lineSecs(b){ return (b.startMs != null && b.endMs != null) ? Math.max(0, (b.endMs - b.startMs) / 1000) : 0; }
-  function chipLabel(s, b){
-    if (b && b.nameOverride) return { text: b.nameOverride, tag: "", suggest: false };
-    const v = voice[s];
-    if (names[s]) return { text: names[s], tag: (v && v.status === "auto") ? "auto" : "", suggest: false };
-    if (v && v.status === "suggest") return { text: v.suggest + "?", tag: Math.round(v.score * 100) + "%", suggest: true };
-    return { text: "Speaker " + s, tag: "", suggest: false };
+  // ---------- naming ----------
+  function blockName(b){
+    if (b.nameOverride) return b.nameOverride;
+    if (enIsMe && b.src === "en") return myName || "Me";
+    return names[b.speaker] || ("Speaker " + b.speaker);
   }
-  function speakerColor(s){ const n = parseInt(s, 10); return COLORS[(isNaN(n) ? 0 : n - 1) % COLORS.length]; }
+  function speakerColor(b){
+    if (enIsMe && b.src === "en" && !b.nameOverride) return "#9aa4ae";
+    const n = parseInt(b.speaker, 10); return COLORS[(isNaN(n) ? 0 : n - 1) % COLORS.length];
+  }
 
   let stickToBottom = true;
-  main.addEventListener("scroll", () => {
-    stickToBottom = main.scrollHeight - main.scrollTop - main.clientHeight < 80;
-  });
+  main.addEventListener("scroll", () => { stickToBottom = main.scrollHeight - main.scrollTop - main.clientHeight < 80; });
   function scrollDown(){ if (stickToBottom) main.scrollTop = main.scrollHeight; }
 
   function newBlock(speaker){
@@ -283,43 +237,24 @@
     const enEl = document.createElement("div"); enEl.className = "en";
     const ruEl = document.createElement("div"); ruEl.className = "ru";
     const pairsEl = document.createElement("div"); pairsEl.className = "pairs";
-    const okEl = document.createElement("span"); okEl.className = "ok"; okEl.textContent = "✓"; okEl.setAttribute("role", "button");
-    const durEl = document.createElement("span"); durEl.className = "dur";
-    const head = document.createElement("div"); head.append(whoEl, okEl, durEl);
+    const head = document.createElement("div"); head.appendChild(whoEl);
     el.append(head, enEl, ruEl, pairsEl);
-    const b = { speaker, en:"", ru:"", el, enEl, ruEl, whoEl, okEl, durEl, pairsEl, spoken:0, t: Date.now(), tEnd: Date.now() };
+    const b = { speaker, en:"", ru:"", src:null, el, enEl, ruEl, whoEl, pairsEl, spoken:0 };
     whoEl.addEventListener("click", () => openRename(b));
-    okEl.addEventListener("click", () => confirmVoice(b.speaker));
-    el.addEventListener("click", e => {
-      if (!selecting) return;
-      e.stopPropagation(); e.preventDefault();
-      if (selected.has(b)) selected.delete(b); else selected.add(b);
-      el.classList.toggle("sel", selected.has(b)); updateSelBar();
-    }, true);
-    paintWho(b);
     main.appendChild(el);
     blocks.push(b);
+    paintWho(b);
     return b;
   }
   function paintWho(b){
-    const l = chipLabel(b.speaker, b);
-    b.whoEl.textContent = l.text;
-    if (l.tag) { const t = document.createElement("span"); t.className = "tag"; t.textContent = l.tag; b.whoEl.appendChild(t); }
-    b.whoEl.classList.toggle("suggest", l.suggest);
-    const v = voice[b.speaker];
-    b.okEl.classList.toggle("show", !b.nameOverride && !!(v && (v.status === "auto" || v.status === "suggest") && v.suggest));
-    const secs = lineSecs(b);
-    b.durEl.textContent = (secs ? secs.toFixed(1) + "s" : "") + (b.sampleSaved ? " · 🎙 saved" : "");
-    b.durEl.classList.toggle("saved", !!b.sampleSaved);
-    const c = speakerColor(b.speaker);
+    b.whoEl.textContent = blockName(b);
+    const c = speakerColor(b);
     b.whoEl.style.background = c + "33"; b.whoEl.style.color = c;
   }
   function sentences(t){ return (t.trim().match(/[^.!?…]+[.!?…]+["»)]*\s*|[^.!?…]+$/g) || []).map(s => s.trim()).filter(Boolean); }
   function paint(b){
-    b.tEnd = Date.now();
     paintWho(b);
     b.enEl.textContent = b.en.trim(); b.ruEl.textContent = b.ru.trim();
-    // split view: pair sentences side by side when the counts match, otherwise show the whole turn side by side
     const en = sentences(b.en), ru = sentences(b.ru);
     const rows = (en.length > 1 && en.length === ru.length) ? en.map((s, i) => [s, ru[i]]) : [[b.en.trim(), b.ru.trim()]];
     b.pairsEl.textContent = "";
@@ -330,13 +265,12 @@
       row.append(a, c); b.pairsEl.appendChild(row);
     }
   }
-
   function divider(text){
     const d = document.createElement("div"); d.className = "divider"; d.textContent = text;
     main.appendChild(d); scrollDown();
   }
 
-  // ---------- token handling ----------
+  // ---------- tokens ----------
   function currentBlockFor(speaker){
     const last = blocks[blocks.length - 1];
     if (last && last.speaker === speaker && !last.closed) return last;
@@ -349,13 +283,12 @@
     }
     return blocks[blocks.length - 1] || newBlock(speaker);
   }
-
+  let hearingTimer = null;
   function handleTokens(tokens){
     const dirty = new Set();
     let pendEn = "", pendRu = "", pendSpk = null;
     for (const t of tokens) {
-      if (!t.text) continue;
-      if (t.text === "<end>" || t.text === "<fin>") continue;
+      if (!t.text || t.text === "<end>" || t.text === "<fin>") continue;
       const spk = t.speaker != null ? String(t.speaker) : (lastSpeaker || "1");
       const status = t.translation_status || "none";
       const isEn = t.language ? String(t.language).toLowerCase().startsWith("en") : status !== "original";
@@ -366,13 +299,8 @@
           dirty.add(b);
         } else {
           lastSpeaker = spk;
-          trackTiming(t, spk);
           const b = currentBlockFor(spk);
           if (!b.src) b.src = isEn ? "en" : "ru";
-          if (t.start_ms != null && t.end_ms != null) {
-            if (b.startMs == null || b.conn !== connId) { b.startMs = t.start_ms; b.conn = connId; }
-            b.endMs = Math.max(b.endMs || 0, t.end_ms);
-          }
           if (isEn) b.en += t.text; else b.ru += t.text;
           dirty.add(b);
         }
@@ -383,29 +311,24 @@
     }
     dirty.forEach(b => { paint(b); maybeSpeak(b); });
     const p = (pendEn || pendRu).trim();
-    live.textContent = p ? (speakerName(pendSpk || lastSpeaker || "1") + ": " + p) : "";
+    if (p) { $("hearing").classList.add("on"); clearTimeout(hearingTimer); hearingTimer = setTimeout(() => $("hearing").classList.remove("on"), 1500); }
+    live.textContent = p ? ((names[pendSpk] || ("Speaker " + (pendSpk || lastSpeaker || "1"))) + ": " + p) : "";
     if (dirty.size) scrollDown();
   }
 
-  // ---------- speech output ----------
+  // ---------- speech output (translations of other people only) ----------
   function maybeSpeak(b){
     if (!listenOn || !("speechSynthesis" in window)) return;
-    if (b.src === "en") return;            // you already understood it
-    const text = b.en;
-    const rest = text.slice(b.spoken);
+    if (b.src === "en") return;
+    const rest = b.en.slice(b.spoken);
     const m = rest.match(/^[\s\S]*[.!?…](\s|$)/);
     if (!m) return;
-    const chunk = m[0].trim();
-    b.spoken += m[0].length;
+    const chunk = m[0].trim(); b.spoken += m[0].length;
     if (!chunk) return;
-    // skip backlog: if speech is falling behind, drop what's queued and say the newest
-    if (speechSynthesis.pending || speechSynthesis.speaking) {
-      if (speechSynthesis.pending) speechSynthesis.cancel();
-    }
+    if (speechSynthesis.pending) speechSynthesis.cancel();       // skip backlog, say the newest
     const who = blockName(b);
-    const prefix = (who !== lastSpokenSpeaker) ? who + ": " : "";
-    lastSpokenSpeaker = who;
-    const u = new SpeechSynthesisUtterance(prefix + chunk);
+    const u = new SpeechSynthesisUtterance((who !== lastSpokenName ? who + ": " : "") + chunk);
+    lastSpokenName = who;
     u.lang = "en-US"; u.rate = 1.08;
     speechSynthesis.speak(u);
   }
@@ -416,18 +339,15 @@
       process(inputs){ const ch = inputs[0] && inputs[0][0]; if (ch) this.port.postMessage(ch.slice(0)); return true; }
     }
     registerProcessor("grab", Grab);`;
-
   let resampleBuf = [], ratio = 3, sendBuf = [], sendLen = 0;
   function onAudio(f32){
-    // simple averaging downsampler to 16 kHz
-    const out = new Int16Array(Math.floor((resampleBuf.length + f32.length) / ratio));
-    let all;
+    let all = f32;
     if (resampleBuf.length) { all = new Float32Array(resampleBuf.length + f32.length); all.set(resampleBuf); all.set(f32, resampleBuf.length); }
-    else all = f32;
+    const out = new Int16Array(Math.floor(all.length / ratio));
     let o = 0, i = 0;
     for (; i + ratio <= all.length; i += ratio) {
       let s = 0; for (let k = 0; k < ratio; k++) s += all[i + k];
-      s /= ratio; s = Math.max(-1, Math.min(1, s));
+      s = Math.max(-1, Math.min(1, s / ratio));
       out[o++] = s < 0 ? s * 0x8000 : s * 0x7fff;
     }
     resampleBuf = Array.from(all.subarray(i));
@@ -436,18 +356,19 @@
       const pkt = new Int16Array(sendLen); let p = 0;
       for (const b of sendBuf) { pkt.set(b, p); p += b.length; }
       sendBuf = []; sendLen = 0;
-      if (ws && ws.readyState === 1) { ringWrite(pkt); ws.send(pkt.buffer); }
+      if (ws && ws.readyState === 1) ws.send(pkt.buffer);
     }
   }
-
   async function startAudio(){
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: true }
     });
     const AC = window.AudioContext || window.webkitAudioContext;
-    // a 16 kHz context lets the browser do proper resampling; fall back to the device rate if refused
-    try { audioCtx = new AC({ sampleRate: TARGET_RATE }); source = audioCtx.createMediaStreamSource(stream); }
-    catch (e) { try { audioCtx && audioCtx.close(); } catch(_){} audioCtx = new AC(); source = audioCtx.createMediaStreamSource(stream); }
+    if (basic) { audioCtx = new AC(); source = audioCtx.createMediaStreamSource(stream); }   // first-version audio path
+    else {
+      try { audioCtx = new AC({ sampleRate: TARGET_RATE }); source = audioCtx.createMediaStreamSource(stream); }
+      catch (e) { try { audioCtx && audioCtx.close(); } catch(_){} audioCtx = new AC(); source = audioCtx.createMediaStreamSource(stream); }
+    }
     await audioCtx.resume();
     ratio = Math.max(1, Math.round(audioCtx.sampleRate / TARGET_RATE));
     if (audioCtx.audioWorklet) {
@@ -456,7 +377,6 @@
       node = new AudioWorkletNode(audioCtx, "grab");
       node.port.onmessage = e => onAudio(e.data);
       source.connect(node);
-      // keep graph alive without audible output
       const mute = audioCtx.createGain(); mute.gain.value = 0; node.connect(mute); mute.connect(audioCtx.destination);
     } else {
       node = audioCtx.createScriptProcessor(4096, 1, 1);
@@ -466,7 +386,6 @@
     const track = stream.getAudioTracks()[0];
     return track ? track.label : "";
   }
-
   function stopAudio(){
     try { node && node.disconnect(); } catch(e){}
     try { source && source.disconnect(); } catch(e){}
@@ -475,35 +394,33 @@
     node = source = stream = audioCtx = null; resampleBuf = []; sendBuf = []; sendLen = 0;
   }
 
-  // ---------- Soniox connection ----------
-  // Newest/richest settings first; if Soniox rejects something, fall back one step.
+  // ---------- Soniox configuration ----------
+  // Richest settings first; if Soniox rejects something, step down. "First-version settings" skips straight to basic.
   function ladder(){
     const models = model === "auto" ? ["stt-rt-v6", "stt-rt-v5"] : [model];
-    const steps = [];
-    for (const m of models) steps.push({ model: m, rich: true });
-    steps.push({ model: models[models.length - 1], rich: false });
-    return steps;
+    const last = models[models.length - 1];
+    if (basic) return [{ model: last, rich: false }];
+    return models.map(m => ({ model: m, rich: true })).concat([{ model: last, rich: false }]);
   }
   function buildContext(){
-    const people = Array.from(new Set(knownNames.concat(Object.values(names)))).filter(Boolean);
-    const terms = Array.from(new Set(people.concat(extraTerms.split(",").map(s => s.trim()).filter(Boolean))));
+    const ppl = Array.from(new Set(knownNames.concat(Object.values(names), enIsMe && myName ? [myName] : []))).filter(Boolean);
+    const terms = Array.from(new Set(ppl.concat(extraTerms.split(",").map(s => s.trim()).filter(Boolean))));
     const general = [
       { key: "domain", value: "Family conversation at home" },
-      { key: "setting", value: "Relatives talking around a table in Bishkek, Kyrgyzstan; several people, sometimes overlapping" },
-      { key: "languages", value: "Mostly Russian, some English" }
+      { key: "setting", value: "Relatives talking around a table in Bishkek, Kyrgyzstan; one phone in the middle of the table" },
+      { key: "languages", value: "Mostly Russian, some English" },
+      { key: "number_of_speakers", value: String(people) }
     ];
-    if (people.length) general.push({ key: "participants", value: people.join(", ") });
+    if (notes.trim()) general.push({ key: "speakers", value: notes.trim().slice(0, 500) });
+    if (ppl.length) general.push({ key: "participants", value: ppl.join(", ") });
     const ctx = { general };
     if (terms.length) ctx.terms = terms.slice(0, 100);
     return ctx;
   }
   function buildConfig(step){
     const cfg = {
-      api_key: apiKey,
-      model: step.model,
-      audio_format: "pcm_s16le",
-      sample_rate: TARGET_RATE,
-      num_channels: 1,
+      api_key: apiKey, model: step.model,
+      audio_format: "pcm_s16le", sample_rate: TARGET_RATE, num_channels: 1,
       language_hints: ["ru", "en"],
       enable_language_identification: true,
       enable_speaker_diarization: true,
@@ -511,8 +428,8 @@
     };
     if (step.rich) {
       cfg.context = buildContext();
-      // English speech gets a Russian line too (split view, learning); Russian gets English as before
       cfg.translation = { type: "two_way", language_a: "ru", language_b: "en" };
+      cfg.max_non_final_tokens_duration_ms = 6000;   // wait longer before settling text: better speaker separation
     }
     return cfg;
   }
@@ -527,7 +444,7 @@
         const steps = ladder(); cfgLevel = Math.min(cfgLevel, steps.length - 1);
         const step = steps[cfgLevel];
         sock.send(JSON.stringify(buildConfig(step)));
-        activeCfg = step.model + (step.rich ? " + context + two-way translation" : " (basic settings)");
+        activeCfg = step.model + (step.rich ? " + room context + two-way translation + 6 s settle time" : " (first-version settings)");
         resolve(sock);
       };
       sock.onmessage = e => {
@@ -536,7 +453,7 @@
           if (!sock.gotTokens && cfgLevel < ladder().length - 1) {
             cfgLevel++;
             ws = null; try { sock.close(); } catch(_){}
-            connect().then(s => { ws = s; }).catch(() => { divider("Couldn't reconnect to Soniox."); });
+            connect().then(s => { ws = s; }).catch(() => divider("Couldn't reconnect to Soniox."));
             return;
           }
           setStatus("Error", false);
@@ -554,7 +471,6 @@
       };
     });
   }
-
   async function reconnect(){
     reconnecting = true;
     setStatus("Reconnecting…", false);
@@ -562,9 +478,8 @@
       await new Promise(r => setTimeout(r, Math.min(1000 * (attempt + 1), 5000)));
       try {
         ws = await connect();
-        closeAllBlocks();
-        names = {}; lastSpeaker = null; resetVoiceSession();
-        divider("— reconnected · speaker labels reset —");
+        closeAllBlocks(); names = {}; lastSpeaker = null;
+        divider("— reconnected · speaker numbers start over —");
         setStatus("Listening", true);
         reconnecting = false;
         return;
@@ -573,7 +488,6 @@
     reconnecting = false;
     if (running) { divider("Connection lost. Tap Start to try again."); stop(); }
   }
-
   function closeAllBlocks(){ blocks.forEach(b => b.closed = true); }
 
   // ---------- start / stop ----------
@@ -582,52 +496,40 @@
     $("startBtn").disabled = true; setStatus("Starting…");
     try {
       const label = await startAudio();
-      resetVoiceSession();
+      cfgLevel = 0;
       ws = await connect();
       running = true;
-      if (voiceOn) loadVoiceModel();
       if (blocks.length) { closeAllBlocks(); divider("— new session · " + new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) + " —"); }
       names = {}; lastSpeaker = null;
       if (label) divider("Mic: " + label);
       $("startBtn").textContent = "Stop"; $("startBtn").classList.add("live");
       setStatus("Listening", true);
-      startedAt = Date.now();
       tick = setInterval(() => { secondsUsed += 1; if (secondsUsed % 15 === 0) store.set("sl.secs", secondsUsed); }, 1000);
       requestWake();
     } catch (e) {
-      stopAudio();
-      setStatus("Idle");
+      stopAudio(); setStatus("Idle");
       divider("Couldn't start: " + (e && e.message ? e.message : e));
     } finally {
       $("startBtn").disabled = false;
     }
   }
-
   function stop(){
-    Object.keys(runs).forEach(closeRun);
     running = false;
-    if (ws) {
-      const sock = ws; ws = null;
-      try { sock.send(""); } catch(e){}
-      setTimeout(() => { try { sock.close(); } catch(e){} }, 3000);
-    }
+    if (ws) { const sock = ws; ws = null; try { sock.send(""); } catch(e){} setTimeout(() => { try { sock.close(); } catch(e){} }, 3000); }
     stopAudio();
     clearInterval(tick); store.set("sl.secs", secondsUsed);
     releaseWake();
-    live.textContent = "";
+    live.textContent = ""; $("hearing").classList.remove("on");
     $("startBtn").textContent = "Start"; $("startBtn").classList.remove("live");
     setStatus("Idle");
   }
 
   // ---------- keep screen awake ----------
-  async function requestWake(){
-    try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch(e){}
-  }
+  async function requestWake(){ try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch(e){} }
   function releaseWake(){ try { wakeLock && wakeLock.release(); } catch(e){} wakeLock = null; }
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && running) {
       requestWake();
-      // iOS may have killed the mic while hidden
       const tr = stream && stream.getAudioTracks()[0];
       if (!tr || tr.readyState === "ended" || (audioCtx && audioCtx.state !== "running")) {
         divider("Mic was paused while the screen was off — restarting.");
@@ -636,470 +538,86 @@
     }
   });
 
-  // ---------- Russian summary for Лёша (Claude) ----------
-  const SUM_SYSTEM = [
-    "You summarize part of a family conversation for Лёша (Losha), a family member who speaks Russian and no English.",
-    "The transcript comes from live speech recognition, so expect small errors; English lines are what was said, lines from Russian speakers are already translated to English.",
-    "Write 2–5 short, simple sentences in natural, warm, everyday Russian, as if a relative were quickly telling him what was discussed.",
-    "Say who said what, using the speakers' names written in Russian (e.g. Allen → Аллен, Sveta → Света, Mom → мама). Skip a name if it is only 'Speaker N'.",
-    "Do not add anything that was not said. Do not translate line by line. Output only the Russian summary."
-  ].join(" ");
-  let sumScope = "new", lastSummaryText = "";
-
-  function transcriptSince(since){
-    return blocks.filter(b => b.tEnd >= since && b.en.trim())
-      .map(b => blockName(b) + ": " + b.en.trim()).join("\n");
-  }
-  async function makeSummary(){
-    if (!anthKey) { $("sumText").textContent = "Add your Claude API key in Settings (⚙︎) first."; return; }
-    let text;
-    if (sumScope === "sel") text = selSnapshot.filter(b => b.en.trim()).map(b => blockName(b) + ": " + b.en.trim()).join("\n");
-    else text = transcriptSince(sumScope === "new" ? lastSummaryAt : sumScope === "5" ? Date.now() - 5 * 60000 : 0);
-    if (!text) { $("sumText").textContent = "Nothing new to summarize yet."; $("sumMeta").textContent = ""; return; }
-    if (text.length > 16000) text = text.slice(-16000);
-    $("sumText").textContent = "…"; $("sumMeta").textContent = "Asking Claude…";
-    const started = Date.now();
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": anthKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
-        body: JSON.stringify({
-          model: anthModel, max_tokens: 700, system: SUM_SYSTEM,
-          messages: [{ role: "user", content: "Transcript:\n" + text + "\n\nКратко по-русски для Лёши:" }]
-        })
-      });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error((data.error && data.error.message) || ("HTTP " + r.status));
-      const out = (data.content || []).filter(c => c.type === "text").map(c => c.text).join("").trim();
-      lastSummaryText = out || "(empty reply)";
-      $("sumText").textContent = lastSummaryText;
-      if (sumScope !== "sel") lastSummaryAt = started;
-      $("sumMeta").textContent = "Covers " + text.split("\n").length + " turns · " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    } catch (e) {
-      $("sumText").textContent = "Couldn't get a summary: " + (e && e.message ? e.message : e);
-      $("sumMeta").textContent = "";
-    }
-  }
-  function setScope(s){
-    sumScope = s;
-    [["sel","sumSel"],["new","sumNew"],["5","sum5"],["all","sumAll"]].forEach(([k,id]) => $(id).classList.toggle("on", k === s));
-    $("sumSel").style.display = selSnapshot.length ? "" : "none";
-  }
-  function inOrder(set){ return blocks.filter(b => set.has(b)); }
-  function updateSelBar(){
-    const n = selected.size;
-    $("selGo").textContent = n ? "Summarize " + n + (n === 1 ? " turn" : " turns") : "Since last";
-    $("selFill").disabled = n < 2;
-  }
-  function startSelecting(){
-    selecting = true; selected.clear();
-    blocks.forEach(b => b.el.classList.remove("sel"));
-    document.body.classList.add("selecting"); updateSelBar();
-  }
-  function stopSelecting(){
-    selecting = false; selected.clear();
-    blocks.forEach(b => b.el.classList.remove("sel"));
-    document.body.classList.remove("selecting");
-  }
-  $("sumBtn").addEventListener("click", startSelecting);
-  $("selCancel").addEventListener("click", stopSelecting);
-  $("selFill").addEventListener("click", () => {
-    const idx = inOrder(selected).map(b => blocks.indexOf(b));
-    if (idx.length < 2) return;
-    for (let i = idx[0]; i <= idx[idx.length - 1]; i++) { selected.add(blocks[i]); blocks[i].el.classList.add("sel"); }
-    updateSelBar();
-  });
-  $("selGo").addEventListener("click", () => {
-    selSnapshot = inOrder(selected);
-    stopSelecting();
-    setScope(selSnapshot.length ? "sel" : "new");
-    $("sumSheet").classList.add("open"); makeSummary();
-  });
-  $("sumSel").addEventListener("click", () => { setScope("sel"); makeSummary(); });
-  $("sumNew").addEventListener("click", () => { setScope("new"); makeSummary(); });
-  $("sum5").addEventListener("click", () => { setScope("5"); makeSummary(); });
-  $("sumAll").addEventListener("click", () => { setScope("all"); makeSummary(); });
-  $("sumClose").addEventListener("click", () => { if ("speechSynthesis" in window) speechSynthesis.cancel(); $("sumSheet").classList.remove("open"); });
-  $("sumCopy").addEventListener("click", async () => { try { await navigator.clipboard.writeText(lastSummaryText); $("sumMeta").textContent = "Copied."; } catch(e) { $("sumMeta").textContent = "Copy was blocked."; } });
-  $("sumSpeak").addEventListener("click", () => {
-    if (!("speechSynthesis" in window) || !lastSummaryText) return;
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(lastSummaryText);
-    u.lang = "ru-RU"; u.rate = 0.95;
-    const ru = speechSynthesis.getVoices().find(v => (v.lang || "").toLowerCase().startsWith("ru"));
-    if (ru) u.voice = ru;
-    speechSynthesis.speak(u);
-  });
-
-  // ---------- voice recognition (on-device) ----------
-  const RING_SECS = 600, RING = TARGET_RATE * RING_SECS;   // last 10 minutes of audio, for saving voice samples
-  let connId = 0;
-  const ring = new Int16Array(RING);
-  let ringPos = 0, connSent = 0;          // samples sent on this connection
-  let runs = {};                          // speaker -> {start,end} ms of current continuous speech
-  let voice = {};                         // speaker -> {clips, secs, evalAt, status, suggest, score, emb, pendingName, busy}
-  let worker = null, modelReady = false, modelFailed = false, reqId = 0, modelPct = 0, modelMsg = "";
-  const pending = new Map();
-
-  function resetVoiceSession(){ runs = {}; voice = {}; connSent = 0; ringPos = 0; connId++; }
-
-  function ringWrite(pkt){
-    for (let i = 0; i < pkt.length; i++) { ring[ringPos] = pkt[i]; ringPos = (ringPos + 1) % RING; }
-    connSent += pkt.length;
-  }
-  function ringRead(startSample, endSample){
-    if (endSample > connSent || connSent - startSample > RING || endSample <= startSample) return null;
-    const out = new Float32Array(endSample - startSample);
-    let pos = (ringPos - (connSent - startSample) + RING * 2) % RING;
-    for (let i = 0; i < out.length; i++) { out[i] = ring[pos] / 32768; pos = (pos + 1) % RING; }
-    return out;
-  }
-
-  function trackTiming(t, spk){
-    if (!voiceOn || t.start_ms == null || t.end_ms == null) return;
-    for (const k of Object.keys(runs)) if (k !== spk) closeRun(k);
-    const r = runs[spk];
-    if (r && t.start_ms - r.end <= 700 && t.end_ms - r.start <= 8000) r.end = Math.max(r.end, t.end_ms);
-    else { if (r) closeRun(spk); runs[spk] = { start: t.start_ms, end: t.end_ms }; }
-  }
-  function closeRun(spk){
-    const r = runs[spk]; delete runs[spk];
-    if (!r || r.end - r.start < 2000) return;   // short bursts give noisy voiceprints
-    const clip = ringRead(Math.round((r.start + 100) * 16), Math.round((r.end - 100) * 16));
-    if (!clip) return;
-    const v = voice[spk] || (voice[spk] = { clips: [], secs: 0, evalAt: 0, status: "none", busy: false });
-    v.clips.push(clip); if (v.clips.length > 6) v.clips.shift();
-    v.secs += clip.length / TARGET_RATE;
-    maybeIdentify(spk);
-  }
-
-  function loadVoiceModel(){
-    if (worker || modelFailed) return;
-    try {
-      worker = new Worker("voice-worker.js", { type: "module" });
-    } catch (e) { modelFailed = true; setVStatus("voice off"); return; }
-    worker.onmessage = e => {
-      const m = e.data;
-      if (m.type === "progress") { modelPct = m.pct; setVStatus(m.pct < 100 ? "voice model " + m.pct + "%" : "loading voice model…"); }
-      else if (m.type === "ready") { modelReady = true; setVStatus("voice ✓"); setTimeout(() => { if ($("vstatus").textContent === "voice ✓") setVStatus(""); }, 4000); Object.keys(voice).forEach(maybeIdentify); }
-      else if (m.type === "emb" || m.type === "error") {
-        const cb = pending.get(m.id); pending.delete(m.id);
-        if (m.type === "error" && m.id == null) { modelFailed = true; modelMsg = m.message; setVStatus("voice model failed"); divider("Voice model couldn't load: " + m.message); }
-        if (cb) cb(m.type === "emb" ? m.emb : null);
-      }
-    };
-    worker.onerror = () => { modelFailed = true; setVStatus("voice model failed"); };
-    setVStatus("voice model…");
-    worker.postMessage({ type: "load" });
-  }
-  function setVStatus(t){ $("vstatus").textContent = t; if ($("moreSheet").classList.contains("open")) renderModelState(); }
-  function renderModelState(){
-    let t;
-    if (modelReady) t = "Voice model: ready ✓ (saved on this phone)";
-    else if (modelFailed) t = "Voice model: failed to load" + (modelMsg ? " — " + modelMsg : "") + ". Reload the page to retry.";
-    else if (worker) t = modelPct && modelPct < 100 ? "Voice model: downloading " + modelPct + "%…" : "Voice model: loading…";
-    else t = "Voice model: not loaded yet (loads when you tap Start, or tap the button below).";
-    $("modelState").textContent = t;
-    $("modelLoad").style.display = (modelReady || worker) ? "none" : "";
-  }
-
-  function embed(audio){
-    return new Promise(res => {
-      const id = ++reqId; pending.set(id, res);
-      worker.postMessage({ type: "embed", id, audio }, [audio.buffer]);
-    });
-  }
-  function norm(v){ let s = 0; for (const x of v) s += x * x; s = Math.sqrt(s) || 1; return v.map(x => x / s); }
-  function cos(a, b){ let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
-  function centroid(embs){
-    const c = new Array(embs[0].length).fill(0);
-    for (const e of embs) for (let i = 0; i < c.length; i++) c[i] += e[i];
-    return norm(c);
-  }
-
-  async function speakerEmbedding(v){
-    const clips = v.clips.slice(-5).map(c => c.slice(0));   // copies (buffers are transferred)
-    let embs = [];
-    for (const c of clips) { const e = await embed(c); if (e) embs.push(norm(e)); }
-    if (!embs.length) return null;
-    // drop the clip least like the others: usually a stretch where diarization mixed in another voice
-    if (embs.length >= 3) {
-      const c = centroid(embs);
-      let worst = 0, worstS = 2;
-      embs.forEach((e, i) => { const s = cos(e, c); if (s < worstS) { worstS = s; worst = i; } });
-      embs.splice(worst, 1);
-    }
-    return centroid(embs);
-  }
-  function takenBy(name, spk){
-    // another speaker in this session already holds this name (manually or with a confident match)
-    return Object.keys(names).some(o => o !== spk && names[o] === name && voice[o] && (voice[o].status === "manual" || voice[o].status === "auto"));
-  }
-
-  async function maybeIdentify(spk){
-    const v = voice[spk];
-    if (!v || v.busy || !voiceOn || !modelReady) return;
-    // the more samples the best-known voices have, the sooner we try (3 s once someone has 8+ samples)
-    const want = v.pendingName ? 4 : firstLook();
-    if (v.secs < want) return;
-    if (!v.pendingName && v.evalAt && (v.secs < v.evalAt + 2 || v.evalAt >= 24)) return;
-    v.busy = true;
-    try {
-      const emb = await speakerEmbedding(v);
-      if (!emb) return;
-      v.emb = emb; v.evalAt = v.secs;
-      if (v.pendingName) { enroll(v, v.pendingName, emb); v.pendingName = null; return; }
-      if (v.status === "manual") { if (v.enrolled) refineSample(v, emb); return; }
-      let best = null, bestS = -1, secondS = -1;
-      for (const [name, p] of Object.entries(profiles)) {
-        if (!p.embs || !p.embs.length) continue;
-        const s = cos(emb, centroid(p.embs));
-        if (s > bestS) { secondS = bestS; bestS = s; best = name; } else if (s > secondS) secondS = s;
-      }
-      if (!best) return;
-      const margin = bestS - Math.max(secondS, 0);
-      const n = profiles[best].embs.length;
-      const canAuto = n >= 3 && bestS >= strict && margin >= 0.08 && v.secs >= autoSecs(n) && !takenBy(best, spk);
-      const canSuggest = v.secs >= suggestSecs(n) && bestS >= strict - 0.06 && margin >= 0.04;
-      if (canAuto) {
-        names[spk] = best; v.status = "auto"; v.suggest = best; v.score = bestS;
-      } else {
-        if (names[spk] && v.status === "auto") delete names[spk];
-        if (canSuggest) { v.status = "suggest"; v.suggest = best; v.score = bestS; }
-        else { v.status = "none"; v.suggest = null; }
-      }
-      repaintSpeaker(spk);
-    } finally { v.busy = false; }
-  }
-
-  // seconds of speech needed, by how many samples the matched voice has
-  function autoSecs(n){ return n >= 8 ? 3 : n >= 5 ? 5 : 8; }
-  function suggestSecs(n){ return n >= 8 ? 3 : n >= 5 ? 4 : 6; }
-  function firstLook(){
-    let most = 0; for (const p of Object.values(profiles)) most = Math.max(most, (p.embs || []).length);
-    return Math.min(autoSecs(most), suggestSecs(most));
-  }
-
-  // naming a speaker no longer saves a voice sample; samples are only lines you pick yourself
-  function learnVoice(spk, name){
-    const v = voice[spk] || (voice[spk] = { clips: [], secs: 0, evalAt: 0, status: "none", busy: false });
-    v.status = "manual"; v.suggest = name; v.pendingName = null;
-  }
-
-  function waitModel(){
-    loadVoiceModel();
-    return new Promise((res, rej) => {
-      const iv = setInterval(() => {
-        if (modelReady) { clearInterval(iv); res(); }
-        else if (modelFailed) { clearInterval(iv); rej(new Error(modelMsg || "voice model failed to load")); }
-      }, 300);
-    });
-  }
-  async function saveSample(b, name){
-    const secs = lineSecs(b);
-    if (secs < 2) throw new Error("Line is too short (needs 2 s or more).");
-    if (b.conn !== connId) throw new Error("That line is from an earlier connection; its audio is gone.");
-    const audio = ringRead(Math.round(b.startMs * 16), Math.round(b.endMs * 16));
-    if (!audio) throw new Error("That line's audio is no longer kept (only the last 10 minutes are).");
-    await waitModel();
-    const CH = TARGET_RATE * 8, embs = [];
-    for (let i = 0; i < audio.length; i += CH) {
-      const piece = audio.slice(i, Math.min(audio.length, i + CH));
-      if (piece.length < TARGET_RATE * 1.5 && embs.length) break;
-      const e = await embed(piece); if (e) embs.push(norm(e));
-    }
-    if (!embs.length) throw new Error("Couldn't analyse that audio.");
-    const sample = centroid(embs).map(x => Math.round(x * 1e4) / 1e4);
-    const p = profiles[name] || (profiles[name] = { embs: [], secs: 0 });
-    p.embs.push(sample); p.secs = (p.secs || 0) + secs;
-    if (p.embs.length > 20) p.embs.shift();
-    p.updated = Date.now();
-    store.set("sl.voices", profiles);
-    b.sampleSaved = name; paintWho(b);
-  }
-  // one sample per speaker per session: relabeling moves it, more speech later improves it
-  function enroll(v, name, emb){
-    if (v.enrolled) unenroll(v);
-    const sample = emb.map(x => Math.round(x * 1e4) / 1e4);
-    const p = profiles[name] || (profiles[name] = { embs: [] });
-    p.embs.push(sample);
-    if (p.embs.length > 12) p.embs.shift();
-    p.updated = Date.now();
-    v.enrolled = { name, sample };
-    store.set("sl.voices", profiles);
-  }
-  function unenroll(v){
-    const { name, sample } = v.enrolled; v.enrolled = null;
-    const p = profiles[name]; if (!p) return;
-    const i = p.embs.indexOf(sample); if (i >= 0) p.embs.splice(i, 1);
-    if (!p.embs.length) delete profiles[name];
-    store.set("sl.voices", profiles);
-  }
-  function refineSample(v, emb){
-    const p = profiles[v.enrolled.name]; if (!p) return;
-    const i = p.embs.indexOf(v.enrolled.sample); if (i < 0) return;
-    const sample = emb.map(x => Math.round(x * 1e4) / 1e4);
-    p.embs[i] = sample; v.enrolled.sample = sample;
-    store.set("sl.voices", profiles);
-  }
-  function confirmVoice(spk){
-    const v = voice[spk]; if (!v || !v.suggest) return;
-    const name = v.suggest;
-    names[spk] = name;
-    learnVoice(spk, name);
-    rememberName(name);
-    repaintSpeaker(spk);
-  }
-  function rememberName(n){ if (!knownNames.includes(n)) { knownNames.push(n); knownNames = knownNames.slice(-16); store.set("sl.names", knownNames); } }
-
-  function repaintSpeaker(spk){ blocks.forEach(b => { if (!b.closed && b.speaker === spk) paintWho(b); }); }
-
-  function renderVoices(){
-    renderModelState();
-    $("voiceToggle").textContent = voiceOn ? "Voice recognition: ON" : "Voice recognition: OFF";
-    $("voiceToggle").classList.toggle("on", voiceOn);
-    $("strictVal").textContent = "(" + Math.round(strict * 100) + "%)";
-    const list = $("voiceList"); list.innerHTML = "";
-    const entries = Object.entries(profiles).sort((a, b) => a[0].localeCompare(b[0]));
-    if (!entries.length) { list.innerHTML = '<p class="note">No voice samples yet. Tap a line you are sure about and use “Save as voice sample”.</p>'; return; }
-    for (const [name, p] of entries) {
-      const row = document.createElement("div"); row.className = "voice-row";
-      const label = document.createElement("span"); label.textContent = name + " ";
-      const n = p.embs ? p.embs.length : 0;
-      const small = document.createElement("small"); small.textContent = n + " sample" + (n === 1 ? "" : "s") + (p.secs ? " · " + Math.round(p.secs) + "s" : "");
-      label.appendChild(small);
-      const del = document.createElement("button"); del.textContent = "Forget";
-      del.addEventListener("click", () => {
-        if (del.dataset.armed) { delete profiles[name]; store.set("sl.voices", profiles); renderVoices(); }
-        else { del.dataset.armed = "1"; del.textContent = "Tap again"; setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.textContent = "Forget"; } }, 3000); }
-      });
-      row.append(label, del); list.appendChild(row);
-    }
-  }
-  $("modelLoad").addEventListener("click", () => { loadVoiceModel(); renderModelState(); });
-  $("voiceToggle").addEventListener("click", () => {
-    voiceOn = !voiceOn; store.set("sl.voiceOn2", voiceOn);
-    if (voiceOn && running) loadVoiceModel();
-    renderVoices();
-  });
-  $("strictUp").addEventListener("click", () => { strict = Math.min(0.98, Math.round((strict + 0.02) * 100) / 100); store.set("sl.strict2", strict); renderVoices(); });
-  $("strictDown").addEventListener("click", () => { strict = Math.max(0.7, Math.round((strict - 0.02) * 100) / 100); store.set("sl.strict2", strict); renderVoices(); });
-  $("forgetAll").addEventListener("click", () => {
-    const b = $("forgetAll");
-    if (b.dataset.armed) { profiles = {}; store.set("sl.voices", profiles); delete b.dataset.armed; b.textContent = "Forget all voices"; renderVoices(); }
-    else { b.dataset.armed = "1"; b.textContent = "Tap again to forget all"; setTimeout(() => { delete b.dataset.armed; b.textContent = "Forget all voices"; }, 3000); }
-  });
-
-  // ---------- rename (per line by default) ----------
+  // ---------- rename (this line by default) ----------
   let renaming = null, nameScope = "line";
   function setNameScope(s){ nameScope = s; $("scopeLine").classList.toggle("on", s === "line"); $("scopeFwd").classList.toggle("on", s === "fwd"); }
+  function rememberName(n){ if (n && !knownNames.includes(n)) { knownNames.push(n); knownNames = knownNames.slice(-16); store.set("sl.names", knownNames); } }
   function openRename(b){
-    renaming = b;
-    setNameScope("line");
+    renaming = b; setNameScope("line");
     $("nameTitle").textContent = "Who said this? (now: " + blockName(b) + ")";
-    const v = voice[b.speaker];
-    const sug = !b.nameOverride && v && (v.status === "suggest" || v.status === "auto") ? (v.suggest || names[b.speaker]) : null;
-    $("suggestRow").style.display = sug ? "flex" : "none";
-    if (sug) { $("suggestYes").textContent = "Yes — " + sug; $("suggestYes").onclick = () => { setNameScope("fwd"); applyName(sug); }; }
     $("nameInput").value = b.nameOverride || names[b.speaker] || "";
     const wrap = $("knownNames"); wrap.innerHTML = "";
-    knownNames.forEach(n => {
+    const choices = Array.from(new Set((myName ? [myName] : []).concat(knownNames)));
+    choices.forEach(n => {
       const btn = document.createElement("button"); btn.textContent = n;
       btn.addEventListener("click", () => applyName(n));
       wrap.appendChild(btn);
     });
-    renderSampleBox();
     $("nameSheet").classList.add("open");
   }
-  function renderSampleBox(){
-    const b = renaming; if (!b) return;
-    const secs = lineSecs(b);
-    const typed = $("nameInput").value.trim();
-    const name = typed || (b.nameOverride || names[b.speaker] || "");
-    const btn = $("sampleBtn");
-    btn.disabled = !name || secs < 2;
-    btn.textContent = name ? "🎙 Save this line (" + secs.toFixed(1) + "s) as " + name + "'s voice sample" : "🎙 Name this line to save it as a voice sample";
-    $("sampleNote").textContent = b.sampleSaved ? "Already saved as " + b.sampleSaved + "'s sample." :
-      (secs < 2 ? "Too short — pick a line of 2 s or more (longer is better, ideally 5 s+)." : "Only save lines you're sure were one person, with no one talking over them.");
-  }
-  $("nameInput").addEventListener("input", renderSampleBox);
-  $("sampleBtn").addEventListener("click", async () => {
-    const b = renaming; if (!b) return;
-    const name = $("nameInput").value.trim() || b.nameOverride || names[b.speaker];
-    if (!name) return;
-    const btn = $("sampleBtn"); btn.disabled = true;
-    $("sampleNote").textContent = modelReady ? "Saving…" : "Loading the voice model (first time ~100 MB)…";
-    try { await saveSample(b, name); rememberName(name); $("sampleNote").textContent = "Saved as " + name + "'s voice sample."; }
-    catch (e) { $("sampleNote").textContent = e.message || String(e); }
-    finally { btn.disabled = false; }
-  });
-  $("scopeLine").addEventListener("click", () => setNameScope("line"));
-  $("scopeFwd").addEventListener("click", () => setNameScope("fwd"));
-
   function applyName(n){
     n = (n || "").trim();
     const b = renaming; if (!b) return;
     const spk = b.speaker;
-    if (nameScope === "line") {
-      b.nameOverride = n || null;
-      paintWho(b);
-    } else {
-      // freeze earlier lines so this never rewrites history, then name this and future lines
+    if (nameScope === "line") { b.nameOverride = n || null; paintWho(b); }
+    else {
+      // freeze earlier lines so this never rewrites history, then name this and later lines
       const idx = blocks.indexOf(b);
-      blocks.forEach((o, i) => {
-        if (i < idx && o.speaker === spk && !o.closed && !o.nameOverride) { o.nameOverride = names[spk] || ("Speaker " + spk); paintWho(o); }
-      });
+      blocks.forEach((o, i) => { if (i < idx && o.speaker === spk && !o.closed && !o.nameOverride) { o.nameOverride = blockName(o); paintWho(o); } });
       b.nameOverride = null;
-      if (n) { names[spk] = n; learnVoice(spk, n); }
-      else { delete names[spk]; const v = voice[spk]; if (v) { v.status = "none"; v.pendingName = null; } }
-      repaintSpeaker(spk);
+      if (n) names[spk] = n; else delete names[spk];
+      blocks.forEach(o => { if (!o.closed && o.speaker === spk) paintWho(o); });
     }
-    if (n) rememberName(n);
+    rememberName(n);
     $("nameSheet").classList.remove("open"); renaming = null;
   }
+  $("scopeLine").addEventListener("click", () => setNameScope("line"));
+  $("scopeFwd").addEventListener("click", () => setNameScope("fwd"));
   $("nameSave").addEventListener("click", () => applyName($("nameInput").value));
   $("nameCancel").addEventListener("click", () => { $("nameSheet").classList.remove("open"); renaming = null; });
   $("nameInput").addEventListener("keydown", e => { if (e.key === "Enter") applyName($("nameInput").value); });
 
   // ---------- settings ----------
+  function paintToggle(id, on){ $(id).textContent = on ? "On" : "Off"; $(id).classList.toggle("on", on); }
+  let draft = {};
   function openSettings(){
+    draft = { people, enIsMe, showLive, basic };
     $("keyInput").value = apiKey; $("modelInput").value = model; $("termsInput").value = extraTerms;
+    $("notesInput").value = notes; $("myNameInput").value = myName;
+    $("pplVal").textContent = draft.people;
+    paintToggle("enMeBtn", draft.enIsMe); paintToggle("liveBtn", draft.showLive); paintToggle("basicBtn", draft.basic);
     $("cfgNote").textContent = activeCfg ? "Last session used: " + activeCfg : "";
-    $("anthKeyInput").value = anthKey; $("anthModelInput").value = anthModel;
     $("costNote").textContent = "Listening time so far: " + (secondsUsed / 3600).toFixed(2) + " h (≈ $" + (secondsUsed / 3600 * 0.12).toFixed(2) + " at $0.12/h).";
     $("setSheet").classList.add("open");
   }
+  $("pplDown").addEventListener("click", () => { draft.people = Math.max(2, draft.people - 1); $("pplVal").textContent = draft.people; });
+  $("pplUp").addEventListener("click", () => { draft.people = Math.min(10, draft.people + 1); $("pplVal").textContent = draft.people; });
+  $("enMeBtn").addEventListener("click", () => { draft.enIsMe = !draft.enIsMe; paintToggle("enMeBtn", draft.enIsMe); });
+  $("liveBtn").addEventListener("click", () => { draft.showLive = !draft.showLive; paintToggle("liveBtn", draft.showLive); });
+  $("basicBtn").addEventListener("click", () => { draft.basic = !draft.basic; paintToggle("basicBtn", draft.basic); });
   $("settingsBtn").addEventListener("click", openSettings);
   $("setSave").addEventListener("click", () => {
     apiKey = $("keyInput").value.trim(); model = $("modelInput").value.trim() || "auto";
-    extraTerms = $("termsInput").value.trim();
+    extraTerms = $("termsInput").value.trim(); notes = $("notesInput").value.trim(); myName = $("myNameInput").value.trim() || "Allen";
+    const restartNeeded = running && (draft.people !== people || draft.basic !== basic);
+    people = draft.people; enIsMe = draft.enIsMe; showLive = draft.showLive; basic = draft.basic;
     store.set("sl.key", apiKey); store.set("sl.model2", model); store.set("sl.terms", extraTerms);
-    cfgLevel = 0;
-    anthKey = $("anthKeyInput").value.trim(); anthModel = $("anthModelInput").value.trim() || "claude-sonnet-5-5";
-    store.set("sl.anthKey", anthKey); store.set("sl.anthModel", anthModel);
+    store.set("sl.notes", notes); store.set("sl.myName", myName); store.set("sl.people", people);
+    store.set("sl.enIsMe", enIsMe); store.set("sl.showLive", showLive); store.set("sl.basic", basic);
+    applyDisplay();
+    blocks.forEach(b => { if (!b.closed) paintWho(b); });
     $("setSheet").classList.remove("open");
+    if (restartNeeded) { divider("Settings changed — restarting the session."); stop(); start(); }
   });
   $("setClose").addEventListener("click", () => $("setSheet").classList.remove("open"));
-  function setFs(v){ fontSize = Math.max(14, Math.min(34, v)); document.documentElement.style.setProperty("--fs", fontSize + "px"); store.set("sl.fs", fontSize); }
+  function setFs(v){ fontSize = Math.max(14, Math.min(34, v)); store.set("sl.fs", fontSize); applyDisplay(); }
   $("fsUp").addEventListener("click", () => setFs(fontSize + 2));
   $("fsDown").addEventListener("click", () => setFs(fontSize - 2));
 
   // ---------- footer ----------
   $("startBtn").addEventListener("click", () => running ? stop() : start());
-  $("ruBtn").addEventListener("click", () => {
-    showRu = !showRu; store.set("sl.ru", showRu);
-    document.body.classList.toggle("hide-ru", !showRu); $("ruBtn").classList.toggle("on", showRu);
-  });
-  $("splitBtn").addEventListener("click", () => {
-    split = !split; store.set("sl.split", split);
-    document.body.classList.toggle("split", split); $("splitBtn").classList.toggle("on", split);
-    scrollDown();
-  });
+  $("ruBtn").addEventListener("click", () => { showRu = !showRu; store.set("sl.ru", showRu); applyDisplay(); });
+  $("splitBtn").addEventListener("click", () => { split = !split; store.set("sl.split", split); applyDisplay(); scrollDown(); });
   $("listenBtn").addEventListener("click", () => {
     listenOn = !listenOn;
     $("listenBtn").classList.toggle("on", listenOn);
@@ -1107,30 +625,25 @@
     if ("speechSynthesis" in window) {
       speechSynthesis.cancel();
       if (listenOn) {
-        // iOS needs speech to start from a tap; also skip everything said before now
-        blocks.forEach(b => b.spoken = b.en.length);
+        blocks.forEach(b => b.spoken = b.en.length);       // start from now
         const u = new SpeechSynthesisUtterance("Listening"); u.lang = "en-US"; speechSynthesis.speak(u);
       }
     }
   });
 
-  // ---------- transcript sheet ----------
-  $("moreBtn").addEventListener("click", () => { $("copyNote").textContent = ""; renderVoices(); $("moreSheet").classList.add("open"); });
+  // ---------- transcript ----------
+  $("moreBtn").addEventListener("click", () => { $("copyNote").textContent = ""; $("moreSheet").classList.add("open"); });
   $("moreClose").addEventListener("click", () => $("moreSheet").classList.remove("open"));
   $("copyBtn").addEventListener("click", async () => {
     const text = blocks.map(b => blockName(b) + ": " + b.en.trim() + (b.ru.trim() ? "\n    (" + b.ru.trim() + ")" : "")).join("\n\n");
     try { await navigator.clipboard.writeText(text); $("copyNote").textContent = "Copied."; }
     catch(e){ $("copyNote").textContent = "Copy was blocked by the browser."; }
   });
-  $("clearBtn").addEventListener("click", () => {
-    blocks.length = 0; main.innerHTML = ""; live.textContent = "";
-    $("moreSheet").classList.remove("open");
-  });
-
-  // close sheets when tapping the dim background
+  $("clearBtn").addEventListener("click", () => { blocks.length = 0; main.innerHTML = ""; live.textContent = ""; $("moreSheet").classList.remove("open"); });
   document.querySelectorAll(".sheet").forEach(s => s.addEventListener("click", e => { if (e.target === s) s.classList.remove("open"); }));
 
   if (!apiKey) setTimeout(openSettings, 300);
+  window.__sl = { handleTokens, blocks, buildConfig, ladder };
 })();
 </script>
 </body>
