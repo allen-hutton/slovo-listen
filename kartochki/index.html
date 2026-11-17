@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Карточки">
+<meta name="theme-color" content="#111418">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Карточки</title>
+<style>
+  :root{
+    --bg:#111418; --panel:#1b1f25; --line:#2b3038; --text:#eef1f4; --muted:#8e97a1;
+    --accent:#4fa3ff; --ok:#2fbf71; --warn:#f0a030; --bad:#ff5a5f; --rule:#d64646;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;height:100dvh;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)}
+  button{font:inherit;color:var(--text);background:#262b33;border:1px solid var(--line);border-radius:12px;touch-action:manipulation;cursor:pointer}
+  button:active{filter:brightness(1.3)}
+  input,textarea{font:inherit;font-size:17px;color:var(--text);background:#0c0e11;border:1px solid var(--line);border-radius:10px;padding:10px 11px;width:100%;min-width:0}
+  textarea{resize:none}
+  .hidden{display:none !important}
+
+  /* ---------- top bar ---------- */
+  .top{display:flex;align-items:center;gap:6px;padding:6px 10px 2px}
+  .top button{height:44px}
+  #prev,#next{width:44px;font-size:24px;flex:0 0 44px}
+  #dateBtn{flex:1;min-width:0;border:none;background:none;text-align:center;padding:0}
+  #dateBtn .d{font-size:18px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #dateBtn .s{font-size:12px;color:var(--muted)}
+  #dateBtn .s.go{color:var(--accent)}
+  #gear{width:44px;flex:0 0 44px;font-size:20px;background:none;border:none}
+  #status{font-size:12px;color:var(--muted);text-align:center;padding:0 12px 4px;min-height:18px}
+  #status.warn{color:var(--warn)}
+  #status.bad{color:var(--bad);font-weight:600}
+
+  .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 12px calc(24px + env(safe-area-inset-bottom))}
+
+  /* ---------- headline + star ---------- */
+  .headRow{display:flex;gap:8px;align-items:center;margin:2px 0 8px}
+  #dayNote{font-size:16px;padding:9px 11px}
+  #starBtn{width:46px;height:44px;flex:0 0 46px;font-size:22px;color:var(--muted)}
+  #starBtn.on{color:#f5c542;border-color:#f5c542}
+
+  /* ---------- offer from previous card ---------- */
+  .offer{display:flex;align-items:center;gap:8px;background:#2a2316;border:1px solid #5a4620;border-radius:12px;padding:8px 10px;margin:0 0 8px;font-size:14px}
+  .offer span{flex:1;min-width:0}
+  .offer button{height:36px;padding:0 12px;font-size:14px;flex:0 0 auto}
+
+  /* ---------- sections (cards) ---------- */
+  .sec{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin:0 0 10px;overflow:hidden}
+  .sec h3{display:flex;justify-content:space-between;align-items:baseline;margin:0;padding:9px 12px 7px;font-size:15px;border-bottom:2px solid var(--rule)}
+  .sec h3 .cnt{font-size:13px;color:var(--muted);font-weight:500}
+  .it{display:flex;align-items:flex-start;gap:8px;padding:4px 8px 4px 4px;border-bottom:1px solid var(--line);min-height:46px}
+  .ck{flex:0 0 42px;width:42px;height:42px;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:0}
+  .ck i{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:2px solid #5d6670;font-style:normal;font-size:16px;font-weight:800}
+  .it.done .ck i{background:var(--ok);border-color:var(--ok);color:#06210f}
+  .it.miss .ck i{background:transparent;border-color:var(--bad);color:var(--bad)}
+  .tx{flex:1;min-width:0;padding:10px 0 8px;font-size:16px;line-height:1.3;overflow-wrap:anywhere;cursor:pointer}
+  .it.done .tx .t{color:var(--muted)}
+  .tx .w{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+  .it.miss .tx .w{color:#e8a0a2}
+  .cr{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:7px;padding:1px 5px;margin-top:12px;white-space:nowrap}
+  .cr.three{color:var(--warn);border-color:var(--warn)}
+  form.add{display:flex;gap:6px;padding:6px 8px 8px}
+  form.add input{font-size:16px;padding:9px 10px;background:transparent;border-style:dashed}
+  form.add button{flex:0 0 46px;width:46px;font-size:22px;padding:0}
+  .hint{font-size:12px;color:var(--muted);text-align:center;margin:8px 0 0;line-height:1.4}
+
+  /* ---------- sheets ---------- */
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:20}
+  .sheet.open{display:flex}
+  .sheet .card{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:16px 16px 0 0;padding:14px 14px calc(18px + env(safe-area-inset-bottom));max-height:92dvh;overflow-y:auto}
+  .sheet h2{font-size:18px;margin:2px 0 10px}
+  .sheet h3{font-size:14px;color:var(--muted);margin:18px 0 6px;font-weight:600}
+  .row{display:flex;gap:8px;margin-top:10px}
+  .row > button{flex:1;height:50px;min-width:0}
+  .seg{display:flex;gap:6px}
+  .seg button{flex:1;height:42px;min-width:0;font-size:15px}
+  .seg button.sel{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  label{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chips button{height:34px;padding:0 10px;font-size:14px;border-radius:17px}
+  .okb{background:var(--ok);border-color:var(--ok);color:#06210f;font-weight:800}
+  .badb{background:#3a1e20;border-color:var(--bad);color:#ffb3b5;font-weight:800}
+  .primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .danger{background:transparent;border-color:var(--bad);color:var(--bad)}
+  .note{font-size:13px;color:var(--muted);line-height:1.4}
+  .err{color:var(--bad);font-size:14px;margin-top:8px;min-height:18px}
+  .oi{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .oi .l{flex:1;min-width:0;font-size:15px;overflow-wrap:anywhere}
+  .oi .l small{display:block;font-size:12px;color:var(--muted)}
+  .oi button{flex:0 0 auto;height:38px;padding:0 12px}
+  .oi button:disabled{opacity:.4}
+  #settings .card{max-height:96dvh}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <button id="prev" aria-label="Previous day">‹</button>
+  <button id="dateBtn"><div class="d" id="dateText"></div><div class="s" id="dateSub"></div></button>
+  <button id="next" aria-label="Next day">›</button>
+  <button id="gear" aria-label="Settings">⚙︎</button>
+</header>
+<div id="status"></div>
+
+<main class="scroll" id="main">
+  <div class="headRow">
+    <input id="dayNote" maxlength="120" autocomplete="off" data-i18n-ph="headlinePh">
+    <button id="starBtn" aria-label="Star">☆</button>
+  </div>
+  <div id="offer"></div>
+  <div id="secs"></div>
+  <p class="hint" data-i18n="hint"></p>
+</main>
+
+<!-- ============ ITEM SHEET ============ -->
+<div class="sheet" id="itemSheet">
+  <div class="card">
+    <textarea id="iText" rows="3" maxlength="200"></textarea>
+    <div class="seg" id="iSec" style="margin-top:8px"></div>
+    <label data-i18n="whyLabel"></label>
+    <input id="iWhy" maxlength="140" autocomplete="off">
+    <div class="chips" id="chips"></div>
+    <div class="row">
+      <button id="iDone" class="okb" data-i18n="markDone"></button>
+      <button id="iMiss" class="badb" data-i18n="markMiss"></button>
+    </div>
+    <div class="row">
+      <button id="iOpen" data-i18n="markOpen"></button>
+      <button id="iClose" class="primary" data-i18n="saveClose"></button>
+    </div>
+    <div class="row"><button id="iDel" class="danger" data-i18n="delete"></button></div>
+  </div>
+</div>
+
+<!-- ============ OFFER SHEET ============ -->
+<div class="sheet" id="offerSheet">
+  <div class="card">
+    <h2 id="offerTitle"></h2>
+    <p class="note" data-i18n="offerNote"></p>
+    <div id="offerList"></div>
+    <div class="row">
+      <button id="offerAll" data-i18n="bringAll"></button>
+      <button id="offerClose" class="primary" data-i18n="done"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SETTINGS ============ -->
+<div class="sheet" id="settings">
+  <div class="card">
+    <h2 data-i18n="settingsTitle"></h2>
+
+    <label data-i18n="langLabel"></label>
+    <div class="seg" id="langSeg">
+      <button data-lang="ru">Русский</button>
+      <button data-lang="en">English</button>
+    </div>
+
+    <h3 data-i18n="exportTitle"></h3>
+    <div class="seg" id="rangeSeg">
+      <button data-range="7"></button>
+      <button data-range="30"></button>
+      <button data-range="all"></button>
+    </div>
+    <div class="row">
+      <button id="copyBtn" class="primary" data-i18n="copyClaude"></button>
+      <button id="csvBtn" data-i18n="downloadCsv"></button>
+    </div>
+    <p class="note" id="exportNote"></p>
+
+    <h3 data-i18n="backupTitle"></h3>
+    <div id="bkOff">
+      <p class="note" data-i18n="backupIntro"></p>
+      <label data-i18n="nameLabel"></label>
+      <input id="bName" maxlength="30" autocomplete="off" autocapitalize="words">
+      <div id="useRz" class="row hidden"><button id="useRzBtn" data-i18n="useRashody"></button></div>
+      <label data-i18n="linkLabel"></label>
+      <input id="bLink" autocomplete="off" autocapitalize="off" placeholder="https://…/rashody/#join=…">
+      <label data-i18n="passLabel"></label>
+      <input id="bPass" type="password" autocomplete="off">
+      <p class="note" data-i18n="orToken" style="margin-top:12px"></p>
+      <label data-i18n="tokenLabel"></label>
+      <input id="bToken" type="password" autocomplete="off" placeholder="github_pat_…">
+      <label data-i18n="repoLabel"></label>
+      <input id="bRepo" autocomplete="off" autocapitalize="off" placeholder="owner/repo">
+      <div class="row"><button id="bConnect" class="primary" data-i18n="connect"></button></div>
+      <div class="err" id="bErr"></div>
+    </div>
+    <div id="bkOn" class="hidden">
+      <p class="note" id="bkDetail"></p>
+      <div class="row">
+        <button id="bNow" class="primary" data-i18n="backupNow"></button>
+        <button id="bRestore" data-i18n="restore"></button>
+      </div>
+      <p class="note" id="bkNote"></p>
+      <div class="row"><button id="bOff" class="danger" data-i18n="disconnect"></button></div>
+    </div>
+
+    <p class="note" style="margin-top:18px" data-i18n="savedNote"></p>
+    <div class="row"><button id="setClose" data-i18n="close"></button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* =====================================================================
+   Strings
+   ===================================================================== */
+const SECS = ["p", "w", "b"];
+const T = {
+  en: {
+    secp:"Personal", secw:"Work", secb:"Business",
+    addTo:"Add to {s}…", headlinePh:"Headline for the day (optional)",
+    hint:"Tap the circle when it's done. Tap the words for ✗ with a reason, a note, or to edit.",
+    today:"Today", yesterday:"Yesterday", tomorrow:"Tomorrow", backToday:"Tap for today",
+    whyLabel:"Reason or note (after the dash)", markDone:"✓ Done", markMiss:"✗ Not done", markOpen:"○ Still open",
+    saveClose:"Save", delete:"Delete", deleteConfirm:"Tap again to delete",
+    offerBar:"{n} unfinished from {d}", review:"Review", offerTitle:"From {d}",
+    offerNote:"Bring forward only what you choose. The rest stays on that card.",
+    bring:"＋ Today", brought:"Added", bringAll:"Bring all", done:"Done",
+    settingsTitle:"Settings", langLabel:"Language", exportTitle:"Export for Claude",
+    r7:"7 days", r30:"30 days", rall:"All", copyClaude:"Copy for Claude", downloadCsv:"Download CSV",
+    copied:"Copied {n} days. Paste it into Claude.", copyFail:"Copy was blocked. Use Download CSV.", nothing:"No cards in that range yet.",
+    backupTitle:"Backup to GitHub",
+    backupIntro:"Optional. Cards are always saved on this phone first. With backup on, a copy goes to your private GitHub data repo whenever there's internet.",
+    nameLabel:"Your name (names the backup file)",
+    useRashody:"Use Rashody's GitHub connection",
+    linkLabel:"Rashody's “Link for the other phone”", passLabel:"Rashody household passcode",
+    orToken:"Or paste a GitHub token instead of the link:",
+    tokenLabel:"GitHub token (Contents read/write on the data repo)", repoLabel:"Data repository (owner/name)",
+    connect:"Connect backup", checking:"Checking access…", needName:"Enter your name first.",
+    needLink:"Paste Rashody's link with the passcode, or a token with the repository.",
+    badPass:"Wrong passcode, or that isn't Rashody's link.", offlineSetup:"You're offline. Connect once with internet to turn on backup.",
+    noAccess:"Couldn't reach that repository with this token: {e}",
+    backupNow:"Back up now", restore:"Merge from backup", disconnect:"Turn off backup",
+    bkDetail:"Backing up to {r} → {p}", lastBackup:"Last backup: {t}", never:"never",
+    restored:"Merged: {n} items came back from the backup.", restoredNone:"Backup checked. Nothing was missing on this phone.",
+    offConfirm:"Tap again to turn off", savedNote:"Every tap and every word is saved on this phone immediately, even in airplane mode.",
+    close:"Close",
+    stSaved:"Saved on phone", stOff:"backup off", stWait:"backup waits for internet", stBusy:"backing up…",
+    stOk:"backed up {t}", stDirty:"backup pending", stErr:"backup problem: {e}",
+    saveFail:"NOT SAVED: phone storage refused. Copy for Claude now so nothing is lost.",
+    carried:"↻ card {n}"
+  },
+  ru: {
+    secp:"Личное", secw:"Работа", secb:"Бизнес",
+    addTo:"Добавить: {s}…", headlinePh:"Главное за день (необязательно)",
+    hint:"Нажмите на кружок, когда сделано. Нажмите на текст, чтобы поставить ✗ с причиной, заметку или изменить.",
+    today:"Сегодня", yesterday:"Вчера", tomorrow:"Завтра", backToday:"Нажмите — сегодня",
+    whyLabel:"Причина или заметка (после тире)", markDone:"✓ Сделано", markMiss:"✗ Не сделано", markOpen:"○ Ещё открыто",
+    saveClose:"Сохранить", delete:"Удалить", deleteConfirm:"Нажмите ещё раз",
+    offerBar:"Не закончено с {d}: {n}", review:"Посмотреть", offerTitle:"С {d}",
+    offerNote:"Перенесите только то, что выберете. Остальное останется на той карточке.",
+    bring:"＋ Сегодня", brought:"Добавлено", bringAll:"Перенести всё", done:"Готово",
+    settingsTitle:"Настройки", langLabel:"Язык", exportTitle:"Экспорт для Claude",
+    r7:"7 дней", r30:"30 дней", rall:"Всё", copyClaude:"Копировать для Claude", downloadCsv:"Скачать CSV",
+    copied:"Скопировано дней: {n}. Вставьте в Claude.", copyFail:"Копирование заблокировано. Скачайте CSV.", nothing:"За этот период карточек нет.",
+    backupTitle:"Резервная копия в GitHub",
+    backupIntro:"Необязательно. Карточки всегда сначала сохраняются на телефоне. С резервной копией копия уходит в ваш закрытый репозиторий, когда есть интернет.",
+    nameLabel:"Ваше имя (для имени файла копии)",
+    useRashody:"Взять подключение GitHub из «Расходов»",
+    linkLabel:"Ссылка «для второго телефона» из «Расходов»", passLabel:"Семейный код «Расходов»",
+    orToken:"Или вставьте токен GitHub вместо ссылки:",
+    tokenLabel:"Токен GitHub", repoLabel:"Репозиторий данных (владелец/имя)",
+    connect:"Включить копию", checking:"Проверка доступа…", needName:"Сначала введите имя.",
+    needLink:"Вставьте ссылку из «Расходов» с кодом или токен с репозиторием.",
+    badPass:"Неверный код или это не ссылка из «Расходов».", offlineSetup:"Нет сети. Подключитесь один раз, чтобы включить копию.",
+    noAccess:"Нет доступа к репозиторию с этим токеном: {e}",
+    backupNow:"Сохранить копию", restore:"Объединить с копией", disconnect:"Выключить копию",
+    bkDetail:"Копия в {r} → {p}", lastBackup:"Последняя копия: {t}", never:"никогда",
+    restored:"Объединено: вернулось пунктов из копии: {n}.", restoredNone:"Копия проверена. На телефоне ничего не потеряно.",
+    offConfirm:"Нажмите ещё раз", savedNote:"Каждое нажатие и каждое слово сразу сохраняются на телефоне, даже в авиарежиме.",
+    close:"Закрыть",
+    stSaved:"Сохранено на телефоне", stOff:"копия выключена", stWait:"копия ждёт интернет", stBusy:"сохраняю копию…",
+    stOk:"копия {t}", stDirty:"копия ожидает", stErr:"ошибка копии: {e}",
+    saveFail:"НЕ СОХРАНЕНО: телефон отказал в записи. Скопируйте для Claude сейчас.",
+    carried:"↻ карточка {n}"
+  }
+};
+const DEFAULT_REASONS = {
+  en: ["no time", "chose alt path", "deprioritized", "forgot", "no motivation", "tried + failed"],
+  ru: ["нет времени", "выбрал другое", "не приоритет", "забыл", "нет мотивации", "пробовал, не вышло"]
+};
+
+/* =====================================================================
+   Storage: everything is written to localStorage on every change
+   ===================================================================== */
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem("kc." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("kc." + k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+};
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+
+let cfg    = LS.get("cfg", {});                        // { name, token, repo }
+let lang   = LS.get("lang", (navigator.language || "en").toLowerCase().startsWith("ru") ? "ru" : "en");
+let db     = LS.get("data", null) || { v: 1, days: {} };
+let bk     = LS.get("bk", { sha: "", last: 0, dirty: false });
+let drafts = LS.get("drafts", {});
+let range  = LS.get("range", "7");
+let saveFailed = false;
+// one snapshot of what was on the phone when the app opened, as a last-resort copy
+try { const cur = localStorage.getItem("kc.data"); if (cur) localStorage.setItem("kc.data.open", cur); } catch (e) {}
+
+function persist() {
+  const ok = LS.set("data", db) && LS.set("bk", bk);
+  saveFailed = !ok;
+  return ok;
+}
+
+const $ = id => document.getElementById(id);
+function t(k, vars) { let s = (T[lang] && T[lang][k]) || T.en[k] || k; if (vars) for (const v in vars) s = s.split("{" + v + "}").join(vars[v]); return s; }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function uid() { const a = new Uint8Array(8); crypto.getRandomValues(a); return Date.now().toString(36) + "-" + Array.from(a, b => b.toString(16).padStart(2, "0")).join(""); }
+function pad2(n) { return String(n).padStart(2, "0"); }
+function ymd(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+function today() { return ymd(new Date()); }
+function shift(date, n) { const d = new Date(date + "T12:00:00"); d.setDate(d.getDate() + n); return ymd(d); }
+function hhmm(ts) { const d = new Date(ts); return pad2(d.getHours()) + ":" + pad2(d.getMinutes()); }
+function loc() { return lang === "ru" ? "ru-RU" : "en-US"; }
+function fmtDay(date, opts) { return new Date(date + "T12:00:00").toLocaleDateString(loc(), opts || { weekday: "short", day: "numeric", month: "short" }); }
+function bump(o, key) { o[key || "upd"] = Math.max(Date.now(), (o[key || "upd"] || 0) + 1); }
+
+/* =====================================================================
+   Data model
+   days[YYYY-MM-DD] = { note, star, nupd, items:[{id, sec, text, st:"open"|"done"|"miss", why, carry, from, created, upd, del}] }
+   ===================================================================== */
+function dayOf(date, create) {
+  if (!db.days[date] && create) db.days[date] = { note: "", star: false, nupd: 0, items: [] };
+  return db.days[date];
+}
+function itemsOf(date, sec) { const d = db.days[date]; return d ? d.items.filter(i => !i.del && (!sec || i.sec === sec)) : []; }
+function findItem(id) { for (const d of Object.values(db.days)) { const i = d.items.find(x => x.id === id); if (i) return i; } return null; }
+function changed() {
+  bk.dirty = true;
+  persist();
+  render();
+  scheduleBackup(4000);
+}
+
+let view = today();
+let lastToday = today();
+
+/* =====================================================================
+   Main view
+   ===================================================================== */
+function render() {
+  renderTop();
+  renderStatus();
+  const d = db.days[view];
+  if (document.activeElement !== $("dayNote")) $("dayNote").value = d ? d.note : "";
+  $("starBtn").textContent = d && d.star ? "★" : "☆";
+  $("starBtn").classList.toggle("on", !!(d && d.star));
+  renderOffer();
+  renderSecs();
+}
+function renderTop() {
+  $("dateText").textContent = fmtDay(view, { weekday: "short", day: "numeric", month: "long" });
+  const td = today(), sub = $("dateSub");
+  sub.classList.toggle("go", view !== td);
+  sub.textContent = view === td ? t("today") : view === shift(td, -1) ? t("yesterday") + " · " + t("backToday")
+    : view === shift(td, 1) ? t("tomorrow") + " · " + t("backToday") : t("backToday");
+  $("next").disabled = view >= shift(td, 1);
+  $("next").style.opacity = view >= shift(td, 1) ? .3 : 1;
+}
+function renderSecs() {
+  const box = $("secs");
+  // keep focus and caret in an add box across re-renders
+  const act = document.activeElement, focusSec = act && act.dataset && act.dataset.add, caret = focusSec ? act.selectionStart : 0;
+  box.innerHTML = "";
+  for (const s of SECS) {
+    const list = itemsOf(view, s);
+    const sec = document.createElement("section"); sec.className = "sec"; sec.dataset.sec = s;
+    const done = list.filter(i => i.st === "done").length;
+    sec.innerHTML = '<h3><span>' + esc(t("sec" + s)) + '</span><span class="cnt">' + (list.length ? done + "/" + list.length : "") + "</span></h3>";
+    for (const it of list) {
+      const row = document.createElement("div");
+      row.className = "it " + it.st; row.dataset.id = it.id;
+      const mark = it.st === "done" ? "✓" : it.st === "miss" ? "✗" : "";
+      row.innerHTML =
+        '<button class="ck" aria-label="toggle"><i>' + mark + '</i></button>' +
+        '<div class="tx"><span class="t">' + esc(it.text) + '</span>' + (it.why ? '<span class="w">— ' + esc(it.why) + "</span>" : "") + "</div>" +
+        (it.carry ? '<span class="cr' + (it.carry >= 2 ? " three" : "") + '">' + esc(t("carried", { n: it.carry + 1 })) + "</span>" : "");
+      row.querySelector(".ck").addEventListener("click", () => toggleDone(it.id));
+      row.querySelector(".tx").addEventListener("click", () => openItem(it.id));
+      sec.appendChild(row);
+    }
+    const f = document.createElement("form"); f.className = "add";
+    const inp = document.createElement("input");
+    inp.dataset.add = s; inp.maxLength = 200; inp.autocomplete = "off"; inp.setAttribute("enterkeyhint", "enter");
+    inp.placeholder = t("addTo", { s: t("sec" + s) });
+    inp.value = drafts[view + ":" + s] || "";
+    inp.addEventListener("input", () => { drafts[view + ":" + s] = inp.value; LS.set("drafts", drafts); });
+    const btn = document.createElement("button"); btn.type = "submit"; btn.textContent = "＋"; btn.setAttribute("aria-label", "add");
+    f.append(inp, btn);
+    f.addEventListener("submit", ev => { ev.preventDefault(); addItem(s, inp.value); });
+    sec.appendChild(f);
+    box.appendChild(sec);
+  }
+  if (focusSec) {
+    const again = box.querySelector('input[data-add="' + focusSec + '"]');
+    if (again) { again.focus({ preventScroll: true }); try { again.setSelectionRange(caret, caret); } catch (e) {} }
+  }
+}
+function addItem(sec, text) {
+  text = String(text || "").trim().slice(0, 200);
+  if (!text) return;
+  const now = Date.now();
+  dayOf(view, true).items.push({ id: uid(), sec, text, st: "open", why: "", carry: 0, from: "", created: now, upd: now });
+  delete drafts[view + ":" + sec]; LS.set("drafts", drafts);
+  changed();
+  const again = $("secs").querySelector('input[data-add="' + sec + '"]');
+  if (again) { again.value = ""; again.focus({ preventScroll: true }); again.scrollIntoView({ block: "nearest" }); }
+}
+function toggleDone(id) {
+  const it = findItem(id); if (!it) return;
+  it.st = it.st === "done" ? "open" : "done";
+  bump(it); changed();
+}
+$("dayNote").addEventListener("input", () => {
+  const d = dayOf(view, true); d.note = $("dayNote").value.slice(0, 120); bump(d, "nupd");
+  bk.dirty = true; persist(); renderStatus(); scheduleBackup(4000);
+});
+$("starBtn").addEventListener("click", () => { const d = dayOf(view, true); d.star = !d.star; bump(d, "nupd"); changed(); });
+$("prev").addEventListener("click", () => { view = shift(view, -1); render(); $("main").scrollTop = 0; });
+$("next").addEventListener("click", () => { if (view < shift(today(), 1)) { view = shift(view, 1); render(); $("main").scrollTop = 0; } });
+$("dateBtn").addEventListener("click", () => { view = today(); render(); });
+
+/* =====================================================================
+   Item sheet: ✓ / ✗ with reason / edit / move / delete
+   ===================================================================== */
+let editing = null, editSec = "p";
+function recentReasons() {
+  const count = new Map();
+  for (const d of Object.values(db.days)) for (const i of d.items) if (!i.del && i.why) { const k = i.why.trim(); if (k && k.length <= 40) count.set(k, (count.get(k) || 0) + 1); }
+  const mine = Array.from(count.entries()).sort((a, b) => b[1] - a[1]).map(e => e[0]).slice(0, 6);
+  const out = mine.slice();
+  for (const r of DEFAULT_REASONS[lang]) if (out.length < 9 && !out.some(x => x.toLowerCase() === r.toLowerCase())) out.push(r);
+  return out;
+}
+function paintISec() {
+  const box = $("iSec"); box.innerHTML = "";
+  for (const s of SECS) {
+    const b = document.createElement("button"); b.textContent = t("sec" + s); b.classList.toggle("sel", s === editSec);
+    b.addEventListener("click", () => { editSec = s; paintISec(); });
+    box.appendChild(b);
+  }
+}
+function openItem(id) {
+  const it = findItem(id); if (!it) return;
+  editing = id; editSec = it.sec;
+  $("iText").value = it.text; $("iWhy").value = it.why || "";
+  paintISec();
+  const chips = $("chips"); chips.innerHTML = "";
+  for (const r of recentReasons()) {
+    const b = document.createElement("button"); b.textContent = r;
+    b.addEventListener("click", () => { $("iWhy").value = r; });
+    chips.appendChild(b);
+  }
+  const del = $("iDel"); delete del.dataset.armed; del.textContent = t("delete");
+  $("itemSheet").classList.add("open");
+}
+function closeItem(st) {
+  const it = findItem(editing);
+  if (it) {
+    const text = $("iText").value.trim().slice(0, 200) || it.text;
+    const why = $("iWhy").value.trim().slice(0, 140);
+    const next = st || it.st;
+    if (text !== it.text || why !== (it.why || "") || editSec !== it.sec || next !== it.st) {
+      it.text = text; it.why = why; it.sec = editSec; it.st = next; bump(it); changed();
+    }
+  }
+  editing = null;
+  $("itemSheet").classList.remove("open");
+}
+$("iDone").addEventListener("click", () => closeItem("done"));
+$("iMiss").addEventListener("click", () => closeItem("miss"));
+$("iOpen").addEventListener("click", () => closeItem("open"));
+$("iClose").addEventListener("click", () => closeItem());
+$("itemSheet").addEventListener("click", ev => { if (ev.target === $("itemSheet")) closeItem(); });
+$("iDel").addEventListener("click", () => {
+  const del = $("iDel");
+  if (!del.dataset.armed) { del.dataset.armed = "1"; del.textContent = t("deleteConfirm"); return; }
+  const it = findItem(editing);
+  if (it) { it.del = true; bump(it); }
+  editing = null; $("itemSheet").classList.remove("open"); changed();
+});
+
+/* =====================================================================
+   Offer unfinished items from the previous card (never copied automatically)
+   ===================================================================== */
+function offerSource() {
+  if (view < today()) return null;
+  const prior = Object.keys(db.days).filter(d => d < view && itemsOf(d).length).sort();
+  const src = prior[prior.length - 1];
+  if (!src) return null;
+  const taken = new Set(itemsOf(view).map(i => i.from).filter(Boolean));
+  const list = itemsOf(src).filter(i => i.st !== "done");
+  return { src, list, open: list.filter(i => !taken.has(i.id)), taken };
+}
+function renderOffer() {
+  const box = $("offer"); box.innerHTML = "";
+  const o = offerSource();
+  if (!o || !o.open.length) return;
+  const div = document.createElement("div"); div.className = "offer";
+  div.innerHTML = "<span>" + esc(t("offerBar", { n: o.open.length, d: fmtDay(o.src) })) + "</span>";
+  const b = document.createElement("button"); b.id = "offerBtn"; b.textContent = t("review");
+  b.addEventListener("click", openOffer);
+  div.appendChild(b); box.appendChild(div);
+}
+function bring(src) {
+  if (itemsOf(view).some(i => i.from === src.id)) return;
+  const now = Date.now();
+  dayOf(view, true).items.push({ id: uid(), sec: src.sec, text: src.text, st: "open", why: "", carry: (src.carry || 0) + 1, from: src.id, created: now, upd: now });
+}
+function openOffer() {
+  const o = offerSource(); if (!o) return;
+  $("offerTitle").textContent = t("offerTitle", { d: fmtDay(o.src) });
+  const box = $("offerList"); box.innerHTML = "";
+  for (const it of o.list) {
+    const row = document.createElement("div"); row.className = "oi";
+    row.innerHTML = '<div class="l">' + (it.st === "miss" ? "✗ " : "○ ") + esc(it.text) + "<small>" + esc(t("sec" + it.sec)) + (it.why ? " · — " + esc(it.why) : "") + "</small></div>";
+    const b = document.createElement("button");
+    const has = o.taken.has(it.id);
+    b.textContent = has ? t("brought") : t("bring"); b.disabled = has;
+    b.addEventListener("click", () => { bring(it); b.textContent = t("brought"); b.disabled = true; changed(); });
+    row.appendChild(b); box.appendChild(row);
+  }
+  $("offerSheet").classList.add("open");
+}
+$("offerAll").addEventListener("click", () => {
+  const o = offerSource(); if (!o) return;
+  o.open.forEach(bring); changed(); openOffer();
+});
+$("offerClose").addEventListener("click", () => $("offerSheet").classList.remove("open"));
+$("offerSheet").addEventListener("click", ev => { if (ev.target === $("offerSheet")) $("offerSheet").classList.remove("open"); });
+
+/* =====================================================================
+   Export: Copy for Claude (markdown + CSV) and CSV download
+   ===================================================================== */
+const EN_SEC = { p: "Personal", w: "Work", b: "Business" };
+function rangeDays() {
+  const all = Object.keys(db.days).filter(d => itemsOf(d).length || (db.days[d].note || "").trim() || db.days[d].star).sort();
+  if (range === "all") return all;
+  const from = shift(today(), -(Number(range) - 1));
+  return all.filter(d => d >= from);
+}
+function csvCell(v) { const s = String(v == null ? "" : v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function buildCSV(days) {
+  const rows = [["date", "weekday", "card", "item", "status", "reason_or_note", "card_number", "added_time", "day_headline", "star"]];
+  for (const d of days) {
+    const day = db.days[d], wd = new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" });
+    const list = itemsOf(d);
+    if (!list.length) rows.push([d, wd, "", "", "", "", "", "", day.note || "", day.star ? "1" : ""]);
+    for (const s of SECS) for (const i of list.filter(x => x.sec === s))
+      rows.push([d, wd, EN_SEC[s], i.text, i.st === "done" ? "done" : i.st === "miss" ? "not done" : "open", i.why || "", (i.carry || 0) + 1, hhmm(i.created), day.note || "", day.star ? "1" : ""]);
+  }
+  return rows.map(r => r.map(x => csvCell(String(x).replace(/[\r\n]+/g, " "))).join(",")).join("\n");
+}
+function frac(list) { return list.length ? list.filter(i => i.st === "done").length + "/" + list.length : "–"; }
+function buildExport(days) {
+  const name = (cfg.name || "").trim();
+  let md = "# Daily cards" + (name ? " — " + name : "") + "\n\n";
+  md += "- Range: " + days[0] + " to " + days[days.length - 1] + " (" + days.length + " days with cards)\n";
+  md += "- Marks: ✓ done · ✗ not done (reason after the dash) · ○ left open · “card N” = item is on its Nth card (carried forward) · ★ = private marker\n\n";
+  md += "## Summary\n\n| Date | Personal | Work | Business | All | ★ |\n|---|---|---|---|---|---|\n";
+  let tot = [0, 0];
+  for (const d of days) {
+    const l = itemsOf(d); tot[0] += l.filter(i => i.st === "done").length; tot[1] += l.length;
+    md += "| " + d + " " + new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" }) + " | " +
+      SECS.map(s => frac(l.filter(i => i.sec === s))).join(" | ") + " | " + frac(l) + " | " + (db.days[d].star ? "★" : "") + " |\n";
+  }
+  md += "\nTotal: " + tot[0] + " of " + tot[1] + " items done" + (tot[1] ? " (" + Math.round(100 * tot[0] / tot[1]) + "%)" : "") + ".\n\n## Cards\n";
+  for (const d of days) {
+    const day = db.days[d], l = itemsOf(d);
+    md += "\n### " + d + " " + new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "long" }) +
+      (day.note ? " — “" + day.note.replace(/\n/g, " ") + "”" : "") + (day.star ? " ★" : "") + "\n";
+    for (const s of SECS) {
+      const ls = l.filter(i => i.sec === s);
+      if (!ls.length) continue;
+      md += "\n**" + EN_SEC[s] + "** (" + frac(ls) + ")\n";
+      for (const i of ls) {
+        md += "- " + (i.st === "done" ? "✓" : i.st === "miss" ? "✗" : "○") + " " + i.text.replace(/\n/g, " ") +
+          (i.why ? " — " + i.why : "") + (i.carry ? " (card " + (i.carry + 1) + ")" : "") + "\n";
+      }
+    }
+  }
+  md += "\n## CSV\n\n```csv\n" + buildCSV(days) + "\n```\n";
+  return md;
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  try {
+    const ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", "");
+    ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta);
+    ta.select(); ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy"); ta.remove(); return ok;
+  } catch (e) { return false; }
+}
+$("copyBtn").addEventListener("click", async () => {
+  const days = rangeDays();
+  if (!days.length) { $("exportNote").textContent = t("nothing"); return; }
+  $("exportNote").textContent = (await copyText(buildExport(days))) ? t("copied", { n: days.length }) : t("copyFail");
+});
+$("csvBtn").addEventListener("click", () => {
+  const days = rangeDays();
+  if (!days.length) { $("exportNote").textContent = t("nothing"); return; }
+  const blob = new Blob(["﻿" + buildCSV(days) + "\n"], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "kartochki-" + today() + ".csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+});
+
+/* =====================================================================
+   Backup to GitHub (optional). The phone is the source of truth; the
+   backup is a copy. Before writing, the backup's contents are merged in,
+   so a second phone or a restore never overwrites anything.
+   ===================================================================== */
+const API = "https://api.github.com";
+const enc = new TextEncoder(), dec = new TextDecoder();
+function slug(s) { return String(s || "").toLowerCase().normalize("NFKD").replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "") || "me"; }
+function bkPath() { return "kartochki/" + slug(cfg.name) + ".json"; }
+function bkUrl() { return API + "/repos/" + cfg.repo + "/contents/" + bkPath(); }
+function ghHeaders(extra) { return Object.assign({ "Authorization": "Bearer " + cfg.token, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" }, extra || {}); }
+function b64decodeUtf8(b64) { return dec.decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), c => c.charCodeAt(0))); }
+function b64encodeUtf8(str) { const bytes = enc.encode(str); let s = ""; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); }
+function connected() { return !!(cfg.token && cfg.repo && cfg.name); }
+
+function mergeIn(remote) {
+  let n = 0;
+  for (const [date, rd] of Object.entries((remote && remote.days) || {})) {
+    if (!rd || !Array.isArray(rd.items)) continue;
+    const ld = db.days[date];
+    if (!ld) { db.days[date] = JSON.parse(JSON.stringify(rd)); n += rd.items.filter(i => !i.del).length || 1; continue; }
+    if ((rd.nupd || 0) > (ld.nupd || 0)) { ld.note = rd.note || ""; ld.star = !!rd.star; ld.nupd = rd.nupd; n++; }
+    const map = new Map(ld.items.map(i => [i.id, i]));
+    for (const ri of rd.items) {
+      if (!ri || !ri.id) continue;
+      const li = map.get(ri.id);
+      if (!li) { ld.items.push(Object.assign({}, ri)); if (!ri.del) n++; }
+      else if ((ri.upd || 0) > (li.upd || 0)) { Object.assign(li, ri); n++; }
+    }
+  }
+  return n;
+}
+function canon(days) {
+  const out = {};
+  for (const d of Object.keys(days || {}).sort()) {
+    const x = days[d];
+    out[d] = { note: x.note || "", star: !!x.star, nupd: x.nupd || 0, items: (x.items || []).slice().sort((a, b) => a.id < b.id ? -1 : 1).map(i => [i.id, i.upd || 0]) };
+  }
+  return JSON.stringify(out);
+}
+let busy = false, bkTimer = null, bkError = "";
+function scheduleBackup(ms) { clearTimeout(bkTimer); bkTimer = setTimeout(() => backup(false), ms); }
+async function backup(forcePull) {
+  clearTimeout(bkTimer);
+  if (!connected()) { renderStatus(); return { ok: false }; }
+  if (busy) { scheduleBackup(1500); return { ok: false, busy: true }; }
+  if (navigator.onLine === false) { bkError = ""; renderStatus(); if (bk.dirty) scheduleBackup(30000); return { ok: false, offline: true }; }
+  if (!bk.dirty && !forcePull) { renderStatus(); return { ok: true }; }
+  busy = true; renderStatus();
+  let merged = 0;
+  try {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      // 1) read what the backup holds and merge it in
+      let sha = "", remoteDays = {};
+      const r = await fetch(bkUrl() + "?t=" + Date.now(), { headers: ghHeaders(), cache: "no-store" });
+      if (r.status === 200) {
+        const j = await r.json(); sha = j.sha || "";
+        let text = j.content ? b64decodeUtf8(j.content) : "";
+        if (!text && j.size) {
+          const raw = await fetch(bkUrl() + "?raw=" + Date.now(), { headers: ghHeaders({ "Accept": "application/vnd.github.raw+json" }), cache: "no-store" });
+          if (!raw.ok) throw new Error("GET raw " + raw.status);
+          text = await raw.text();
+        }
+        const remote = text ? JSON.parse(text) : {};
+        remoteDays = remote.days || {};
+        const n = mergeIn(remote);
+        if (n) { merged += n; persist(); render(); }
+      } else if (r.status !== 404) {
+        throw new Error(r.status === 401 ? "token rejected (401)" : r.status === 404 ? "not found" : "GET " + r.status);
+      }
+      // 2) write our copy if the backup is missing anything
+      if (canon(remoteDays) === canon(db.days)) { bk.dirty = false; bk.sha = sha; break; }
+      const snapshot = canon(db.days);
+      const body = { message: "kartochki: " + slug(cfg.name) + " " + new Date().toISOString(),
+        content: b64encodeUtf8(JSON.stringify({ v: 1, app: "kartochki", person: cfg.name, updated: new Date().toISOString(), days: db.days })) };
+      if (sha) body.sha = sha;
+      const p = await fetch(bkUrl(), { method: "PUT", headers: ghHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body), cache: "no-store" });
+      if (p.ok) {
+        const j = await p.json(); bk.sha = (j.content && j.content.sha) || "";
+        if (canon(db.days) === snapshot) bk.dirty = false;    // nothing new was typed while uploading
+        break;
+      }
+      if (p.status === 409 || p.status === 422) continue;    // the backup moved on; read it again and merge
+      throw new Error(p.status === 401 ? "token rejected (401)" : p.status === 403 ? "token can't write (403)" : "PUT " + p.status);
+    }
+    bk.last = Date.now(); bkError = "";
+  } catch (e) {
+    bkError = (e && e.message) || String(e);
+  } finally {
+    busy = false; persist(); renderStatus(); renderSettingsBox();
+    if (bk.dirty) scheduleBackup(bkError ? 60000 : 5000);
+  }
+  return { ok: !bkError, merged };
+}
+window.addEventListener("online", () => scheduleBackup(500));
+window.addEventListener("offline", renderStatus);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") { checkDay(); scheduleBackup(500); }
+  else if (bk.dirty) backup(false);
+});
+setInterval(() => { checkDay(); if (bk.dirty && !busy) backup(false); }, 60000);
+
+function renderStatus() {
+  const el = $("status"); el.className = "";
+  if (saveFailed) { el.textContent = t("saveFail"); el.className = "bad"; return; }
+  let s = t("stSaved");
+  if (!connected()) s += " · " + t("stOff");
+  else if (busy) s += " · " + t("stBusy");
+  else if (navigator.onLine === false) { s += " · " + t("stWait"); if (bk.dirty) el.className = "warn"; }
+  else if (bkError) { s += " · " + t("stErr", { e: bkError }); el.className = "warn"; }
+  else if (bk.dirty) s += " · " + t("stDirty");
+  else if (bk.last) s += " · " + t("stOk", { t: new Date(bk.last).toLocaleTimeString(loc(), { hour: "2-digit", minute: "2-digit" }) });
+  el.textContent = "✓ " + s;
+}
+
+/* =====================================================================
+   Settings
+   ===================================================================== */
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll("[data-lang]").forEach(b => b.classList.toggle("sel", b.dataset.lang === lang));
+  document.querySelectorAll("[data-range]").forEach(b => { b.textContent = t("r" + b.dataset.range); b.classList.toggle("sel", b.dataset.range === range); });
+  render(); renderSettingsBox();
+}
+document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click", () => { lang = b.dataset.lang; LS.set("lang", lang); applyLang(); }));
+document.querySelectorAll("[data-range]").forEach(b => b.addEventListener("click", () => { range = b.dataset.range; LS.set("range", range); applyLang(); }));
+function rashodyCfg() { try { const c = JSON.parse(localStorage.getItem("rz.cfg") || "null"); return c && c.token && c.repo ? c : null; } catch (e) { return null; } }
+function renderSettingsBox() {
+  const on = connected();
+  $("bkOff").classList.toggle("hidden", on);
+  $("bkOn").classList.toggle("hidden", !on);
+  $("useRz").classList.toggle("hidden", !rashodyCfg());
+  if (on) {
+    $("bkDetail").textContent = t("bkDetail", { r: cfg.repo, p: bkPath() }) + " · " +
+      t("lastBackup", { t: bk.last ? new Date(bk.last).toLocaleString(loc()) : t("never") }) + (bkError ? " · " + bkError : "");
+  } else if (document.activeElement !== $("bName")) $("bName").value = cfg.name || "";
+}
+$("gear").addEventListener("click", () => { $("exportNote").textContent = ""; $("bErr").textContent = ""; renderSettingsBox(); $("settings").classList.add("open"); });
+$("setClose").addEventListener("click", () => $("settings").classList.remove("open"));
+$("settings").addEventListener("click", ev => { if (ev.target === $("settings")) $("settings").classList.remove("open"); });
+
+// Rashody's invite link carries {token, repo}, sealed with the household passcode (AES-GCM, PBKDF2)
+function unb64u(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; const bin = atob(s); return Uint8Array.from(bin, c => c.charCodeAt(0)); }
+async function openInvite(blob, pass) {
+  const raw = unb64u(blob), salt = raw.slice(0, 16), iv = raw.slice(16, 28), ct = raw.slice(28);
+  const base = await crypto.subtle.importKey("raw", enc.encode(pass), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 310000, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  return JSON.parse(dec.decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct)));
+}
+async function connectWith(token, repo) {
+  const name = $("bName").value.trim();
+  if (!name) { $("bErr").textContent = t("needName"); return; }
+  if (navigator.onLine === false) { $("bErr").textContent = t("offlineSetup"); return; }
+  repo = String(repo || "").trim().replace(/^https?:\/\/github\.com\//, "").replace(/\/$/, "");
+  $("bErr").textContent = t("checking");
+  try {
+    const r = await fetch(API + "/repos/" + repo, { headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" }, cache: "no-store" });
+    if (!r.ok) throw new Error(r.status === 404 ? "not found (check the name and the token's repository access)" : "HTTP " + r.status);
+    const j = await r.json();
+    if (j.permissions && j.permissions.push === false) throw new Error("token is read-only");
+  } catch (e) { $("bErr").textContent = t("noAccess", { e: e.message }); return; }
+  cfg = { name, token, repo }; LS.set("cfg", cfg);
+  $("bErr").textContent = ""; $("bLink").value = ""; $("bPass").value = ""; $("bToken").value = "";
+  bk.dirty = true; bk.sha = ""; persist();
+  renderSettingsBox();
+  const res = await backup(true);
+  $("bkNote").textContent = res.merged ? t("restored", { n: res.merged }) : "";
+}
+$("bConnect").addEventListener("click", async () => {
+  const link = $("bLink").value.trim(), pass = $("bPass").value, token = $("bToken").value.trim(), repo = $("bRepo").value.trim();
+  if (link && pass) {
+    const m = link.match(/#join=([A-Za-z0-9_-]+)/) || link.match(/^([A-Za-z0-9_-]{40,})$/);
+    let c = null;
+    try { c = m ? await openInvite(m[1], pass) : null; } catch (e) { c = null; }
+    if (!c || !c.token) { $("bErr").textContent = t("badPass"); return; }
+    return connectWith(c.token, c.repo);
+  }
+  if (token && repo) return connectWith(token, repo);
+  $("bErr").textContent = t("needLink");
+});
+$("useRzBtn").addEventListener("click", () => { const c = rashodyCfg(); if (c) connectWith(c.token, c.repo); });
+$("bNow").addEventListener("click", () => { bk.dirty = true; persist(); backup(true); });
+$("bRestore").addEventListener("click", async () => {
+  $("bkNote").textContent = t("checking");
+  const res = await backup(true);
+  $("bkNote").textContent = res.ok ? (res.merged ? t("restored", { n: res.merged }) : t("restoredNone")) : (bkError || t("stWait"));
+});
+$("bOff").addEventListener("click", () => {
+  const b = $("bOff");
+  if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = t("offConfirm"); return; }
+  delete b.dataset.armed; b.textContent = t("disconnect");
+  cfg = { name: cfg.name }; LS.set("cfg", cfg); bkError = ""; renderSettingsBox(); renderStatus();
+});
+
+/* =====================================================================
+   Day rollover + boot
+   ===================================================================== */
+function checkDay() {
+  const td = today();
+  if (td !== lastToday) { if (view === lastToday) view = td; lastToday = td; render(); }
+}
+applyLang();
+if (bk.dirty) scheduleBackup(1500);
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+
+// test hook (exposes nothing beyond what this phone already stores)
+window.__kc = { get db() { return db; }, get bk() { return bk; }, buildExport, buildCSV, backup, rangeDays };
+})();
+</script>
+</body>
+</html>
