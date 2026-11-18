@@ -44,7 +44,9 @@
   /* ---------- entry ---------- */
   #add{padding:0 10px}
   .amountRow{display:flex;align-items:center;gap:8px;padding:2px 2px 6px}
-  #amount{flex:1;font-size:44px;font-weight:700;text-align:right;letter-spacing:.5px;min-height:56px;line-height:56px;overflow:hidden;white-space:nowrap}
+  .amtwrap{flex:1;min-width:0;text-align:right}
+  #amount{font-size:44px;font-weight:700;text-align:right;letter-spacing:.5px;min-height:48px;line-height:48px;overflow:hidden;white-space:nowrap}
+  #amountAlt{font-size:13px;line-height:14px;height:14px;color:var(--muted);white-space:nowrap;overflow:hidden}
   #amount.empty{color:#4a525c}
   #curBtn{min-width:76px;height:52px;font-size:18px;font-weight:700}
   #curBtn.usd{background:#1d3550;border-color:var(--accent)}
@@ -76,7 +78,7 @@
   .pad{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(4,1fr);gap:6px;margin-top:6px;flex:1 1 0;min-height:0}
   .pad button{font-size:26px;font-weight:600;min-height:0;height:100%}
   @media (max-height:620px){
-    #amount{font-size:36px;min-height:46px;line-height:46px}
+    #amount{font-size:36px;min-height:40px;line-height:40px}
     #curBtn,#noteBtn,#scanBtn{height:44px}
     .ctile{height:52px;gap:0} .ctile .ce{font-size:19px;line-height:22px} .ctile .cl{font-size:10px;line-height:11px} .catpage{gap:5px}
     .pad{gap:5px} .pad button{font-size:22px}
@@ -217,6 +219,27 @@
   .stars{display:flex;gap:2px;margin-top:6px}
   .stars button{background:none;border:none;font-size:26px;padding:0 3px;height:34px;color:#f0a531}
   .starline{color:#f0a531;font-size:12px;letter-spacing:1px}
+  .paybtn{margin-right:4px}
+  .paybtn.card{background:#1d3550;border-color:var(--accent)}
+  .wallet{background:#1b2230;border:1px solid #2c3a52;border-radius:14px;padding:12px 14px;margin:10px 0 4px}
+  .wallet .wbal{font-size:26px;font-weight:800;margin:2px 0}
+  .wallet .row{margin-top:8px}
+  .wallet .row button{height:42px;font-size:14px}
+  .wlog{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.5}
+  .wlog b{color:var(--text)}
+  .wgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .wbars{display:flex;align-items:flex-end;gap:4px;height:70px;margin:8px 0 18px}
+  .wbars div{flex:1;background:var(--accent);border-radius:4px 4px 0 0;position:relative;min-height:2px}
+  .wbars div span{position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--muted);white-space:nowrap}
+  #askQ{width:100%;font:inherit;font-size:16px;color:var(--text);background:#0c0e11;border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:6px;box-sizing:border-box}
+  .answer{margin-top:10px;font-size:15px;line-height:1.45;white-space:pre-wrap}
+  .answer:empty{display:none}
+  .answer{background:#151a21;border:1px solid var(--line);border-radius:12px;padding:12px}
+  .pingbar{position:fixed;left:10px;right:10px;top:calc(8px + env(safe-area-inset-top));z-index:60;background:#1f8f4e;color:#fff;border-radius:14px;padding:12px 14px;display:none;align-items:center;gap:10px;font-size:15px;font-weight:600;box-shadow:0 4px 18px rgba(0,0,0,.45)}
+  .pingbar span{flex:1}
+  .pingbar button{background:rgba(255,255,255,.22);border:none;color:#fff;height:36px;padding:0 14px;border-radius:10px;font-weight:700}
+  .walkbar .notify{background:rgba(255,255,255,.2);border:none;color:#fff;height:34px;padding:0 10px;border-radius:17px;flex:0 0 auto;font-size:13px}
+  .walkbar .notify.on{background:#fff;color:#2b7cff}
   .total{display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin-top:14px;padding-top:10px;border-top:2px solid var(--line)}
   .addrow{display:flex;gap:8px;margin-top:8px}
   .addrow input{flex:1}
@@ -250,12 +273,12 @@
   <div class="amountRow">
     <button id="noteBtn" aria-label="Note">✎</button>
     <button id="scanBtn" aria-label="Scan">📷</button>
-    <div id="amount" class="empty">0</div>
+    <div class="amtwrap"><div id="amount" class="empty">0</div><div id="amountAlt"></div></div>
     <button id="curBtn">KGS</button>
   </div>
   <div class="noteRow" id="noteRow"><input id="noteInput" maxlength="80" autocomplete="off" data-i18n-ph="notePh"></div>
   <div class="catpager" id="cats"></div>
-  <div class="catbar"><div class="picked" id="catPicked"></div><div class="dots" id="catDots"></div><button class="srch" id="catSearchBtn">🔍 <span data-i18n="allCats">All</span></button></div>
+  <div class="catbar"><button class="srch paybtn" id="payBtn">💵</button><div class="picked" id="catPicked"></div><div class="dots" id="catDots"></div><button class="srch" id="catSearchBtn">🔍 <span data-i18n="allCats">All</span></button></div>
   <div class="pad" id="pad"></div>
   <div class="saves">
     <button id="saveLiving" disabled data-i18n="living">LIVING</button>
@@ -310,7 +333,7 @@
   <div class="pview" id="pMap">
     <div id="mapBox"></div>
     <div id="mapMsg" class="mapmsg"></div>
-    <div id="walkBar" class="walkbar"><span id="walkText"></span><button id="walkClose" aria-label="close">✕</button></div>
+    <div id="walkBar" class="walkbar"><span id="walkText"></span><button id="walkNotify" class="notify">🔔</button><button id="walkClose" aria-label="close">✕</button></div>
     <button id="mapMe" class="mapbtn" aria-label="me">◎</button>
     <button id="recBtn" class="mapbtn recbtn" aria-label="record">●</button>
     <button id="shareBtn" class="mapbtn sharebtn" aria-label="share">👥</button>
@@ -449,8 +472,22 @@
 
 <!-- ============ SUMMARY ============ -->
 <section class="view" id="summary">
-  <div class="scroll" id="summaryBody"></div>
+  <div class="scroll">
+    <div id="walletBox"></div>
+    <div id="summaryBody"></div>
+    <div id="walkStats"></div>
+    <div id="askBox">
+      <h3 data-i18n="askTitle">🤖 Ask about your spending</h3>
+      <div class="typechips" id="askChips"></div>
+      <textarea id="askQ" rows="2" data-i18n-ph="askPh"></textarea>
+      <div class="row" style="margin-top:6px"><button id="askBtn" class="primary" data-i18n="askBtn">Ask</button></div>
+      <div id="askA" class="answer"></div>
+    </div>
+  </div>
 </section>
+<div class="sheet" id="walletSheet"><div class="card"><div id="wBody"></div>
+  <div class="row"><button id="wSave" class="primary" data-i18n="save">Save</button><button id="wCancel" data-i18n="cancel2">Cancel</button></div></div></div>
+<div id="pingBar" class="pingbar"><span id="pingText"></span><button id="pingOk">OK</button></div>
 
 <!-- ============ SETTINGS ============ -->
 <section class="view" id="settings">
@@ -548,6 +585,10 @@
     <div class="seg" id="eType">
       <button data-type="LIVING" data-i18n="living">LIVING</button>
       <button data-type="TRIP" data-i18n="trip">TRIP</button>
+    </div>
+    <div class="seg" id="ePay" style="margin-top:10px">
+      <button data-pay="cash">💵 <span data-i18n="cash">Cash</span></button>
+      <button data-pay="card">💳 <span data-i18n="card">Card</span></button>
     </div>
     <label data-i18n="note">Note</label>
     <input id="eNote" maxlength="80" autocomplete="off">
@@ -741,6 +782,14 @@ const T = {
     aqBadTip:"Keep outdoor time short. An N95/KN95 mask helps on long walks.", aqVbadTip:"Avoid long walks. Wear an N95/KN95 outside and keep windows shut.", aqHazTip:"Stay inside if you can. N95/KN95 outside, windows shut.",
     aqBest:"Best time to walk in the next 24 h: {from}:00–{to}:00 (about {v}).", aqSrcStation:"Measured at station: {s}.", aqSrcModel:"* Model estimate (Open-Meteo / CAMS), not a station — often reads low in Bishkek's winter smog. Add a station token in Settings for real readings.",
     aqUpdated:"Updated {m} min ago.",
+    cash:"Cash", card:"Card", myCash:"👛 My cash", notCounted:"Not counted yet — tap Count and enter what's in your wallet to start.", sinceCount:"Since your count on {d}.",
+    wAtm:"🏧 ATM", wEx:"💱 Exchange", wCount:"🧮 Count", wAtmTitle:"Cash out of an ATM", wExTitle:"Currency exchange", wCountTitle:"Count your wallet",
+    wGave:"I gave", wGot:"I got", wSom:"Som", wUsd:"Dollars", wExpected:"The app expects: {k} · {u}", wRate:"Rate {r} som per $ · market {m} ({p})",
+    wMatch:"Matches — nothing missing.", wUntracked:"Untracked since last count: {k}{u}.", wSurplus:"More than expected: {k}{u} — maybe a card payment logged as cash?",
+    wLogAtm:"🏧 +{a}", wLogEx:"💱 {g} → {r}", wLogCount:"🧮 counted {a}", wOther:"{p}: {a}", walkTitle:"🚶 Walking", walkToday:"Today {a}", walkWeek:"Last 7 days {a}",
+    walkNote:"Counted while the Map tab is open (iPhone only lets web apps use GPS on screen).", askTitle:"🤖 Ask about your spending", askPh:"e.g. How much did food cost per day this week?", askBtn:"Ask",
+    askThinking:"Thinking…", askQ1:"Where did most money go this week?", askQ2:"This week vs last week", askQ3:"Food cost per day", askQ4:"Biggest one-off costs",
+    pingHere:"✅ I'm here → {p}", pingSent:"Sent to {p}.", pingArrived:"made it to {pl}", pingAt:"is at {pl}", notifyOn:"Will tell {p} when you arrive.", pingFrom:"{p} {t} · {time}",
     pMap:"Map", mapDownloading:"Saving the Bishkek map to this phone for offline use… {p}% (9 MB, one time)",
     mapNeedsNet:"The map downloads once (9 MB). Connect to the internet and open Map again — after that it works offline.",
     homeLabel:"Home", openStore:"Open store", onList:"From your list:", fromYou:"from you", fromHomeShort:"from home",
@@ -818,6 +867,14 @@ const T = {
     aqBadTip:"Поменьше на улице. На долгих прогулках помогает маска N95/KN95.", aqVbadTip:"Без долгих прогулок. На улице маска N95/KN95, окна закрыты.", aqHazTip:"По возможности оставайтесь дома. На улице N95/KN95, окна закрыты.",
     aqBest:"Лучшее время для прогулки в ближайшие 24 ч: {from}:00–{to}:00 (около {v}).", aqSrcStation:"Измерено на станции: {s}.", aqSrcModel:"* Модельная оценка (Open-Meteo / CAMS), не станция — зимой в Бишкеке часто занижена. Добавьте токен станций в настройках.",
     aqUpdated:"Обновлено {m} мин назад.",
+    cash:"Наличные", card:"Карта", myCash:"👛 Мои наличные", notCounted:"Ещё не пересчитано — нажмите «Пересчёт» и введите, сколько в кошельке.", sinceCount:"С пересчёта {d}.",
+    wAtm:"🏧 Банкомат", wEx:"💱 Обмен", wCount:"🧮 Пересчёт", wAtmTitle:"Снял(а) в банкомате", wExTitle:"Обмен валюты", wCountTitle:"Пересчитать кошелёк",
+    wGave:"Отдал(а)", wGot:"Получил(а)", wSom:"Сомы", wUsd:"Доллары", wExpected:"Приложение ожидает: {k} · {u}", wRate:"Курс {r} сом за $ · рынок {m} ({p})",
+    wMatch:"Сходится — ничего не потеряно.", wUntracked:"Не записано с прошлого пересчёта: {k}{u}.", wSurplus:"Больше ожидаемого: {k}{u} — может, оплату картой записали как наличные?",
+    wLogAtm:"🏧 +{a}", wLogEx:"💱 {g} → {r}", wLogCount:"🧮 пересчёт {a}", wOther:"{p}: {a}", walkTitle:"🚶 Ходьба", walkToday:"Сегодня {a}", walkWeek:"За 7 дней {a}",
+    walkNote:"Считается, пока открыта вкладка «Карта» (iPhone даёт веб-приложениям GPS только при открытом экране).", askTitle:"🤖 Вопрос о расходах", askPh:"напр. Сколько в день уходило на еду на этой неделе?", askBtn:"Спросить",
+    askThinking:"Думаю…", askQ1:"На что ушло больше всего на этой неделе?", askQ2:"Эта неделя против прошлой", askQ3:"Еда в день", askQ4:"Самые крупные разовые траты",
+    pingHere:"✅ Я здесь → {p}", pingSent:"Отправлено: {p}.", pingArrived:"добрался(ась) до: {pl}", pingAt:"сейчас здесь: {pl}", notifyOn:"Сообщу {p}, когда дойдёте.", pingFrom:"{p} {t} · {time}",
     pMap:"Карта", mapDownloading:"Сохраняю карту Бишкека на телефон для работы без сети… {p}% (9 МБ, один раз)",
     mapNeedsNet:"Карта скачивается один раз (9 МБ). Подключитесь к интернету и откройте «Карту» снова — дальше она работает без сети.",
     homeLabel:"Дом", openStore:"Открыть магазин", onList:"Из списка:", fromYou:"от вас", fromHomeShort:"от дома",
@@ -844,8 +901,9 @@ let files   = LS.get("files", {});      // person -> { sha, etag }
 let shared  = LS.get("shared", { rate: DEFAULT_RATE, upd: 0, by: "" });   // shared settings (rate)
 let lastSync = LS.get("lastSync", 0), syncError = "";
 // prices: stores, products, price observations (history), shopping list — same merge rules as entries
-let px = LS.get("px", { stores: {}, products: {}, prices: {}, list: {}, cats: {}, paths: {} });
-["stores", "products", "prices", "list", "cats", "paths"].forEach(k => { if (!px[k]) px[k] = {}; });
+const PX_KEYS = ["stores", "products", "prices", "list", "cats", "paths", "wallet", "pings"];
+let px = LS.get("px", {});
+PX_KEYS.forEach(k => { if (!px[k]) px[k] = {}; });
 let photoQueue = LS.get("photoQueue", []);      // photo ids waiting to upload
 
 function persist() {
@@ -895,12 +953,15 @@ document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click"
 /* =====================================================================
    Entry screen
    ===================================================================== */
-let amt = "", cur = "KGS", cat = null;
+let amt = "", cur = "KGS", cat = null, pay = "cash";
+function paintPay() { const b = $("payBtn"); b.textContent = pay === "card" ? "💳 " + t("card") : "💵 " + t("cash"); b.classList.toggle("card", pay === "card"); }
 
 function renderAmount() {
   const el = $("amount");
   el.textContent = amt || "0";
   el.classList.toggle("empty", !amt);
+  const v = parseFloat(amt);
+  $("amountAlt").textContent = v > 0 ? "≈ " + (cur === "USD" ? fmtK(v * rate()) : fmtU(v / rate())) : "";
   const ok = parseFloat(amt) > 0;
   $("saveLiving").disabled = !ok; $("saveTrip").disabled = !ok;
 }
@@ -1003,6 +1064,7 @@ $("noteInput").addEventListener("input", () => $("noteBtn").classList.toggle("ha
 $("curBtn").addEventListener("click", () => {
   cur = cur === "KGS" ? "USD" : "KGS";
   $("curBtn").textContent = cur; $("curBtn").classList.toggle("usd", cur === "USD");
+  renderAmount();
 });
 
 let toastTimer = null;
@@ -1022,14 +1084,16 @@ function saveEntry(type) {
     note: $("noteInput").value.trim().slice(0, 80),
     upd: now.getTime(), editor: me
   };
+  if (pay === "card") e.pay = "card";
   entries[e.id] = e; dirty = true;
   persist();                                   // saved on the phone before anything else happens
   toast(type === "TRIP" ? t("savedTrip") : t("saved"), type === "TRIP" ? "trip" : "");
-  amt = ""; cat = null; catOrder = null; $("noteInput").value = ""; $("noteRow").classList.remove("open"); $("noteBtn").classList.remove("has"); $("noteInput").blur();
+  amt = ""; cat = null; catOrder = null; pay = "cash"; paintPay(); $("noteInput").value = ""; $("noteRow").classList.remove("open"); $("noteBtn").classList.remove("has"); $("noteInput").blur();
   renderAmount(); renderCats(); renderAll();
   scheduleSync(300);
 }
 $("saveLiving").addEventListener("click", () => saveEntry("LIVING"));
+$("payBtn").addEventListener("click", () => { pay = pay === "card" ? "cash" : "card"; paintPay(); });
 $("saveTrip").addEventListener("click", () => saveEntry("TRIP"));
 
 /* =====================================================================
@@ -1081,13 +1145,16 @@ function openEdit(id) {
   const e = entries[id]; if (!e) return;
   editing = id;
   $("eAmount").value = e.amt; eCurVal = e.cur; $("eCur").textContent = eCurVal;
-  $("eCat").value = e.cat; eTypeVal = e.type; paintEType();
+  $("eCat").value = e.cat; eTypeVal = e.type; paintEType(); ePayVal = e.pay === "card" ? "card" : "cash"; paintEPay();
   $("eNote").value = e.note || "";
   $("eMeta").textContent = e.date + " " + e.time + " · " + personLabel(e.person) +
     (e.editor && e.editor !== e.person ? " · " + t("edited", { p: personLabel(e.editor) }) : "");
   const del = $("eDelete"); delete del.dataset.armed; del.textContent = t("delete");
   $("editSheet").classList.add("open");
 }
+let ePayVal = "cash";
+function paintEPay() { document.querySelectorAll("#ePay button").forEach(b => b.classList.toggle("sel", b.dataset.pay === ePayVal)); }
+document.querySelectorAll("#ePay button").forEach(b => b.addEventListener("click", () => { ePayVal = b.dataset.pay; paintEPay(); }));
 function paintEType() { document.querySelectorAll("#eType button").forEach(b => b.classList.toggle("sel", b.dataset.type === eTypeVal)); }
 document.querySelectorAll("#eType button").forEach(b => b.addEventListener("click", () => { eTypeVal = b.dataset.type; paintEType(); }));
 $("eCur").addEventListener("click", () => { eCurVal = eCurVal === "KGS" ? "USD" : "KGS"; $("eCur").textContent = eCurVal; });
@@ -1100,7 +1167,7 @@ $("eSave").addEventListener("click", () => {
   if (!(v > 0)) return;
   entries[editing] = Object.assign({}, e, {
     amt: Math.round(v * 100) / 100, cur: eCurVal, cat: $("eCat").value, type: eTypeVal,
-    note: $("eNote").value.trim().slice(0, 80), upd: Math.max(Date.now(), (e.upd || 0) + 1), editor: me
+    note: $("eNote").value.trim().slice(0, 80), upd: Math.max(Date.now(), (e.upd || 0) + 1), editor: me, pay: ePayVal === "card" ? "card" : undefined
   });
   dirty = true; persist(); closeEdit(); renderAll(); scheduleSync(300);
 });
@@ -1170,6 +1237,7 @@ function renderSummary() {
   h += "<h3>" + t("byCat") + "</h3>" + table(s.byCat, k => catEmoji(k) + " " + catLabel(k), s.all);
   h += "<h3>" + t("byPerson") + "</h3>" + table(s.byPerson, k => personLabel(k), s.all);
   $("summaryBody").innerHTML = h;
+  renderWallet(); renderWalkStats(); renderAskChips();
 }
 
 function csvCell(v) {
@@ -1177,9 +1245,9 @@ function csvCell(v) {
   return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 }
 function buildCSV() {
-  const rows = [["date","time","person","amount","currency","amount_usd","category","type","note"]];
+  const rows = [["date","time","person","amount","currency","amount_usd","category","type","note","paid_with"]];
   live().sort((a, b) => a.ts - b.ts).forEach(e => rows.push([
-    e.date, e.time, e.person, e.amt.toFixed(2), e.cur, toUSD(e).toFixed(2), e.cat, e.type, (e.note || "").replace(/[\r\n]+/g, " ")
+    e.date, e.time, e.person, e.amt.toFixed(2), e.cur, toUSD(e).toFixed(2), e.cat, e.type, (e.note || "").replace(/[\r\n]+/g, " "), e.pay === "card" ? "card" : "cash"
   ]));
   return rows.map(r => r.map(csvCell).join(",")).join("\n");
 }
@@ -1206,6 +1274,13 @@ function buildExport() {
   md += mdTable("LIVING vs TRIP", s.byType, s.all);
   md += mdTable("By category", s.byCat, s.all);
   md += mdTable("By person", s.byPerson, s.all);
+  if (liveOf("wallet").length) {
+    md += "## Cash on hand\n\n" + PEOPLE.filter(p => liveOf("wallet").some(r => r.person === p)).map(p => { const w = walletOf(p); return "- " + p + ": " + mdNum(w.k) + " KGS, " + mdUsd(w.u) + " USD" + (w.counted ? " (since count " + w.since + ")" : ""); }).join("\n") + "\n";
+    const ex = liveOf("wallet").filter(r => r.kind === "exchange"), cnt = liveOf("wallet").filter(r => r.kind === "count" && r.diffK != null);
+    if (ex.length) md += "- Exchanges: " + ex.map(r => r.date + " @ " + r.rate).join("; ") + "\n";
+    if (cnt.length) md += "- Untracked at counts: " + cnt.map(r => r.date + " " + r.person + " " + mdNum(r.diffK + (r.diffU || 0) * rate()) + " KGS").join("; ") + "\n";
+    md += "\n";
+  }
   md += "## All entries\n\n```csv\n" + buildCSV() + "\n```\n";
   if (Object.values(px.prices).some(r => !r.del)) {
     md += "\n## Prices we've recorded\n\nLatest price for each item at each store (KGS converted at the rate above):\n\n```csv\n" + buildPricesCSV(false) + "\n```\n";
@@ -1263,6 +1338,7 @@ function importExport(text) {
     const e = { date: r[ix("date")], time: r[ix("time")] || "00:00", person: r[ix("person")] || "Sveta", amt: Math.round(amtv * 100) / 100,
       cur: r[ix("currency")] === "USD" ? "USD" : "KGS", cat: r[ix("category")] || "Other", type: r[ix("type")] === "TRIP" ? "TRIP" : "LIVING",
       note: (r[ix("note")] || "").slice(0, 80) };
+    if (ix("paid_with") >= 0 && r[ix("paid_with")] === "card") e.pay = "card";
     const k = entryKey(e);
     if (have.has(k)) { same++; continue; }
     const ts = new Date(e.date + "T" + e.time + ":00").getTime() || Date.now();
@@ -1398,7 +1474,7 @@ function mergeDoc(doc) {
   }
   if (doc.shared && (doc.shared.upd || 0) > (shared.upd || 0)) { shared = doc.shared; changed = true; }
   const dp = doc.px || {};
-  for (const k of ["stores", "products", "prices", "list", "cats", "paths"]) {
+  for (const k of PX_KEYS) {
     for (const r of (dp[k] || [])) {
       if (!r || !r.id) continue;
       if (newer(r, px[k][r.id]) && JSON.stringify(r) !== JSON.stringify(px[k][r.id])) { px[k][r.id] = r; changed = true; }
@@ -1422,7 +1498,7 @@ function myDoc() {
   const mine = Object.values(entries).filter(e => e.editor === me).sort((a, b) => a.ts - b.ts);
   const mineOf = k => Object.values(px[k]).filter(r => r.editor === me);
   return { v: 2, person: me, updated: Date.now(), shared: shared.by === me ? shared : undefined, entries: mine,
-    px: { stores: mineOf("stores"), products: mineOf("products"), prices: mineOf("prices"), list: mineOf("list"), cats: mineOf("cats"), paths: mineOf("paths") } };
+    px: Object.fromEntries(PX_KEYS.map(k => [k, mineOf(k)])) };
 }
 async function push() {
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -2451,7 +2527,9 @@ function storePopup(s, items) {
   wb.addEventListener("click", () => { map.closePopup(); walkTo(s); });
   const btn = document.createElement("button"); btn.className = "popbtn"; btn.style.background = "#5b6474"; btn.textContent = t("openStore");
   btn.addEventListener("click", () => { map.closePopup(); openStore(s.id); });
-  d.append(wb, btn, mv);
+  if (cfg && !cfg.local) { const ih = document.createElement("button"); ih.className = "popbtn herebtn"; ih.style.background = "#1f8f4e"; ih.textContent = t("pingHere", { p: otherPerson() });
+    ih.addEventListener("click", () => { map.closePopup(); sendPing(t("pingAt", { pl: s.name })); }); d.append(wb, ih, btn, mv); }
+  else d.append(wb, btn, mv);
   return d;
 }
 function drawPins(force) {
@@ -2491,7 +2569,7 @@ function drawPins(force) {
   if (!stores.length && $("mapMsg").style.display !== "block") mapMsg(t("mapNoPins"), true);
 }
 let walkLayer = null;
-function clearWalk() { if (walkLayer) { walkLayer.remove(); walkLayer = null; } $("walkBar").style.display = "none"; }
+function clearWalk() { if (walkLayer) { walkLayer.remove(); walkLayer = null; } $("walkBar").style.display = "none"; arrivalTarget = null; }
 async function walkTo(s) {
   clearWalk();
   const inCity = p => p && p.lat > MAP_BOUNDS[0][0] && p.lat < MAP_BOUNDS[1][0] && p.lng > MAP_BOUNDS[0][1] && p.lng < MAP_BOUNDS[1][1];
@@ -2506,6 +2584,8 @@ async function walkTo(s) {
     L.polyline(w.path, { color: "#2b7cff", weight: 5, opacity: 1, interactive: false, className: "walkline" })
   ]).addTo(map);
   map.fitBounds(L.latLngBounds(w.path).pad(0.15), { maxZoom: 17 });
+  arrivalTarget = { name: s.name, lat: s.lat, lng: s.lng, on: false };
+  $("walkNotify").style.display = cfg && !cfg.local ? "" : "none"; $("walkNotify").classList.remove("on"); $("walkNotify").textContent = "🔔 " + otherPerson();
   $("walkText").textContent = "🚶 " + fmtKm(w.m / 1000) + " · ~" + w.min + " " + t("minShort") + " — " + (from.src === "here" ? t("fromYou") : t("fromHomeShort")) + " → " + s.name;
   $("walkBar").style.display = "flex";
 }
@@ -2514,6 +2594,7 @@ function startWatch() {
   watchId = navigator.geolocation.watchPosition(p => {
     const ll = [p.coords.latitude, p.coords.longitude], acc = p.coords.accuracy || 30;
     lastMe = { lat: ll[0], lng: ll[1], acc: Math.round(acc) };
+    trackWalk(ll[0], ll[1], acc); checkArrival();
     if (!meMarker) {
       meCircle = L.circle(ll, { radius: acc, color: "#2b7cff", weight: 1, fillOpacity: .12, interactive: false }).addTo(map);
       meMarker = L.circleMarker(ll, { radius: 8, color: "#fff", weight: 3, fillColor: "#2b7cff", fillOpacity: 1, interactive: false }).addTo(map);
@@ -3047,6 +3128,170 @@ $("aqiSheet").addEventListener("click", ev => { if (ev.target === $("aqiSheet"))
 $("aqiRefresh").addEventListener("click", () => refreshAqi(true));
 paintAqi();
 
+
+/* ---------- cash wallet: ATM and exchanges move money, cash expenses spend it, a count catches what wasn't logged ---------- */
+function walletOf(person) {
+  const recs = liveOf("wallet").filter(r => r.person === person).sort((a, b) => a.ts - b.ts);
+  const last = recs.filter(r => r.kind === "count").pop();
+  let k = last ? last.kgs : 0, u = last ? last.usd : 0; const t0 = last ? last.ts : 0;
+  for (const r of recs) if (r.ts > t0 && r.kind !== "count") { k += r.kgs || 0; u += r.usd || 0; }
+  for (const e of live()) if (e.person === person && e.pay !== "card" && e.ts > t0) { if (e.cur === "USD") u -= e.amt; else k -= e.amt; }
+  return { k, u, counted: !!last, since: last ? last.date + " " + (last.time || "") : "" };
+}
+function cashTxt(k, u) { const parts = []; if (Math.round(k) || !u) parts.push(fmtK(k)); if (Math.abs(u) >= 0.5) parts.push(fmtU(u)); return parts.join(" · "); }
+function renderWallet() {
+  const box = $("walletBox"); if (!box || !me) return;
+  const w = walletOf(me);
+  let h = '<div class="wallet"><div class="note" style="margin:0">' + esc(t("myCash")) + '</div><div class="wbal">' + esc(cashTxt(w.k, w.u)) + "</div>";
+  h += '<div class="note" style="margin:0">' + esc(w.counted ? t("sinceCount", { d: w.since }) : t("notCounted")) + "</div>";
+  h += '<div class="row"><button data-w="atm">' + esc(t("wAtm")) + '</button><button data-w="exchange">' + esc(t("wEx")) + '</button><button data-w="count">' + esc(t("wCount")) + "</button></div>";
+  const recs = liveOf("wallet").filter(r => r.person === me).sort((a, b) => b.ts - a.ts).slice(0, 4);
+  if (recs.length) h += '<div class="wlog">' + recs.map(r => esc(r.date.slice(5) + " ") + walletLine(r)).join("<br>") + "</div>";
+  const o = otherPerson && !(cfg && cfg.local) ? otherPerson() : null;
+  if (o && liveOf("wallet").some(r => r.person === o)) { const ow = walletOf(o); h += '<div class="wlog">' + esc(t("wOther", { p: o, a: cashTxt(ow.k, ow.u) })) + "</div>"; }
+  box.innerHTML = h + "</div>";
+  box.querySelectorAll("[data-w]").forEach(b => b.addEventListener("click", () => openWallet(b.dataset.w)));
+}
+function walletLine(r) {
+  if (r.kind === "atm") return esc(t("wLogAtm", { a: cashTxt(r.kgs || 0, r.usd || 0) }));
+  if (r.kind === "exchange") { const g = r.usd < 0 ? fmtU(-r.usd) : fmtK(-r.kgs), g2 = r.usd < 0 ? fmtK(r.kgs) : fmtU(r.usd); return esc(t("wLogEx", { g, r: g2 })) + (r.rate ? ' <span class="uprice">@' + r.rate + "</span>" : ""); }
+  const d = (r.diffK || 0) + (r.diffU || 0) * rate();
+  return esc(t("wLogCount", { a: cashTxt(r.kgs, r.usd) })) + (Math.abs(d) >= 1 ? " · <b>" + (d < 0 ? "−" : "+") + esc(fmtK(Math.abs(d))) + "</b>" : " ✓");
+}
+let wMode = null, wCurA = "KGS", wCurB = "KGS";
+function openWallet(mode) {
+  wMode = mode; const b = $("wBody"), w = walletOf(me);
+  const num = (id, ph) => '<input id="' + id + '" type="number" inputmode="decimal" step="0.01" min="0" placeholder="' + (ph || "0") + '" style="flex:1;font-size:22px;font-weight:700">';
+  if (mode === "atm") {
+    wCurA = "KGS";
+    b.innerHTML = "<h3>" + esc(t("wAtmTitle")) + '</h3><div class="addrow" style="margin-top:0">' + num("wA") + '<button id="wCurA" style="flex:0 0 64px">KGS</button></div>';
+  } else if (mode === "exchange") {
+    wCurA = "USD"; wCurB = "KGS";
+    b.innerHTML = "<h3>" + esc(t("wExTitle")) + "</h3><label>" + esc(t("wGave")) + '</label><div class="addrow" style="margin-top:0">' + num("wA") + '<button id="wCurA" style="flex:0 0 64px">USD</button></div>' +
+      "<label>" + esc(t("wGot")) + '</label><div class="addrow" style="margin-top:0">' + num("wB") + '<button id="wCurB" style="flex:0 0 64px" disabled>KGS</button></div><p class="note" id="wInfo"></p>';
+  } else {
+    b.innerHTML = "<h3>" + esc(t("wCountTitle")) + '</h3><div class="wgrid"><div><label>' + esc(t("wSom")) + "</label>" + num("wK") + "</div><div><label>" + esc(t("wUsd")) + "</label>" + num("wU") + "</div></div>" +
+      '<p class="note" id="wInfo">' + (w.counted ? esc(t("wExpected", { k: fmtK(w.k), u: fmtU(w.u) })) : "") + "</p>";
+  }
+  const ca = $("wCurA"); if (ca) ca.addEventListener("click", () => { wCurA = wCurA === "KGS" ? "USD" : "KGS"; ca.textContent = wCurA; if (mode === "exchange") { wCurB = wCurA === "USD" ? "KGS" : "USD"; $("wCurB").textContent = wCurB; } wInfo(); });
+  b.querySelectorAll("input").forEach(i => i.addEventListener("input", wInfo));
+  $("walletSheet").classList.add("open");
+  setTimeout(() => { const f = b.querySelector("input"); if (f) f.focus(); }, 60);
+}
+function wInfo() {
+  if (wMode !== "exchange") return;
+  const a = parseFloat($("wA").value), g = parseFloat($("wB").value);
+  if (!(a > 0 && g > 0)) { $("wInfo").textContent = ""; return; }
+  const r = wCurA === "USD" ? g / a : a / g, m = rate(), pct = (wCurA === "USD" ? (r - m) : (m - r)) / m * 100;
+  $("wInfo").textContent = t("wRate", { r: r.toFixed(2), m: m.toFixed(2), p: (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%" });
+}
+$("wCancel").addEventListener("click", () => $("walletSheet").classList.remove("open"));
+$("walletSheet").addEventListener("click", ev => { if (ev.target === $("walletSheet")) $("walletSheet").classList.remove("open"); });
+$("wSave").addEventListener("click", () => {
+  const now = new Date(), base = { id: uid(), person: me, kind: wMode, ts: now.getTime(), date: localDate(now), time: localTime(now) };
+  if (wMode === "atm") {
+    const a = parseFloat($("wA").value); if (!(a > 0)) return;
+    saveRec("wallet", Object.assign(base, wCurA === "USD" ? { usd: a, kgs: 0 } : { kgs: a, usd: 0 }));
+  } else if (wMode === "exchange") {
+    const a = parseFloat($("wA").value), g = parseFloat($("wB").value); if (!(a > 0 && g > 0)) return;
+    const r = wCurA === "USD" ? g / a : a / g;
+    saveRec("wallet", Object.assign(base, wCurA === "USD" ? { usd: -a, kgs: g } : { kgs: -a, usd: g }, { rate: +r.toFixed(2) }));
+  } else {
+    const k = parseFloat($("wK").value) || 0, u = parseFloat($("wU").value) || 0, w = walletOf(me);
+    const rec = Object.assign(base, { kgs: k, usd: u });
+    if (w.counted) { rec.diffK = Math.round((k - w.k) * 100) / 100; rec.diffU = Math.round((u - w.u) * 100) / 100; }
+    saveRec("wallet", rec);
+    if (w.counted) {
+      const dK = rec.diffK, dU = rec.diffU, tot = dK + dU * rate();
+      const parts = (a, b) => (Math.abs(a) >= 1 ? fmtK(Math.abs(a)) : "") + (Math.abs(b) >= 0.5 ? (Math.abs(a) >= 1 ? " + " : "") + fmtU(Math.abs(b)) : "");
+      toast(Math.abs(tot) < 1 ? t("wMatch") : tot < 0 ? t("wUntracked", { k: parts(dK, dU), u: "" }) : t("wSurplus", { k: parts(dK, dU), u: "" }), Math.abs(tot) < 1 ? "" : "trip");
+    }
+  }
+  $("walletSheet").classList.remove("open"); renderAll();
+});
+
+/* ---------- walking stats: distance walked while the Map is open (web apps only get GPS on screen) ---------- */
+let walked = LS.get("walked", {}), walkLast = null, walkSaveT = null;
+function trackWalk(lat, lng, acc) {
+  if (acc > 25) return;
+  const now = Date.now();
+  if (!walkLast) { walkLast = { lat, lng, ts: now }; return; }
+  const d = km(walkLast, { lat, lng }) * 1000, dt = Math.max(1, (now - walkLast.ts) / 1000);
+  if (d < Math.max(8, acc)) return;                     // ignore standing-still jitter
+  if (d / dt <= (window.__maxSpeed || 3) && dt < 600) { const k = localDate(new Date()); walked[k] = (walked[k] || 0) + d; clearTimeout(walkSaveT); walkSaveT = setTimeout(() => LS.set("walked", walked), 2000); }
+  walkLast = { lat, lng, ts: now };
+}
+function renderWalkStats() {
+  const box = $("walkStats"); if (!box) return;
+  const days = []; for (let i = 6; i >= 0; i--) { const d = new Date(Date.now() - i * 864e5); days.push({ k: localDate(d), lbl: i ? d.toLocaleDateString(lang === "ru" ? "ru-RU" : "en-US", { weekday: "short" }) : (lang === "ru" ? "сег." : "today") }); }
+  const v = days.map(d => walked[d.k] || 0), week = v.reduce((a, b) => a + b, 0);
+  if (!week) { box.innerHTML = ""; return; }
+  const max = Math.max(...v, 1000);
+  box.innerHTML = "<h3>" + esc(t("walkTitle")) + '</h3><div class="note" style="margin:0">' + esc(t("walkToday", { a: fmtKm(v[6] / 1000) }) + " · " + t("walkWeek", { a: fmtKm(week / 1000) })) + "</div>" +
+    '<div class="wbars">' + days.map((d, i) => '<div style="height:' + Math.max(2, Math.round(v[i] / max * 68)) + 'px" title="' + fmtKm(v[i] / 1000) + '"><span>' + esc(d.lbl) + "</span></div>").join("") + "</div>" +
+    '<p class="note">' + esc(t("walkNote")) + "</p>";
+}
+
+/* ---------- ask Claude about the spending, using the same export as "Copy for Claude" ---------- */
+function renderAskChips() {
+  const box = $("askChips"); if (!box || box.childElementCount) return;
+  ["askQ1", "askQ2", "askQ3", "askQ4"].forEach(k => { const b = document.createElement("button"); b.textContent = t(k); b.addEventListener("click", () => { $("askQ").value = t(k); askClaude(); }); box.appendChild(b); });
+  const last = LS.get("askLast", null); if (last && !$("askA").textContent) showAnswer(last.q, last.a);
+}
+function showAnswer(q, a) {
+  const safe = esc(a).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/^#+\s*/gm, "").replace(/^[-*]\s+/gm, "• ");
+  $("askA").innerHTML = '<div class="note" style="margin:0 0 6px">' + esc(q) + "</div>" + safe;
+}
+async function askClaude() {
+  const q = $("askQ").value.trim(); if (!q) return;
+  const key = claudeKey(); if (!key) { toast(t("scanNoKey"), "trip"); return; }
+  if (navigator.onLine === false) { toast(t("needOnline"), "trip"); return; }
+  $("askA").textContent = t("askThinking"); $("askBtn").disabled = true;
+  try {
+    const sys = "You answer questions about a household's spending data (Allen and Sveta, in Kyrgyzstan). Use only the data given. Today is " + localDate(new Date()) +
+      ". Amounts are in KGS (som) with USD alongside. Answer first in one or two sentences, then at most 5 short bullet points with the numbers that support it. No preamble. Reply in " + (lang === "ru" ? "Russian" : "English") + ".";
+    const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "content-type": "application/json", "x-api-key": key.k,
+      "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      body: JSON.stringify({ model: SCAN_MODEL, max_tokens: 900, system: sys, messages: [{ role: "user", content: buildExport() + "\n\n---\nQuestion: " + q }] }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error((j.error && j.error.message) || ("HTTP " + r.status));
+    const a = (j.content || []).map(c => c.text || "").join("").trim();
+    LS.set("askLast", { q, a, ts: Date.now() }); showAnswer(q, a);
+  } catch (e) { $("askA").textContent = t("scanFail", { e: (e && e.message) || e }); }
+  finally { $("askBtn").disabled = false; }
+}
+$("askBtn").addEventListener("click", askClaude);
+
+/* ---------- check-ins: "I'm here" pings to the other phone (shown when their app is open) ---------- */
+let arrivalTarget = null;
+function sendPing(text) {
+  if (!cfg || cfg.local) return;
+  saveRec("pings", { id: uid(), from: me, to: otherPerson(), text, ts: Date.now(), seen: false });
+  toast(t("pingSent", { p: otherPerson() }));
+}
+function showPings() {
+  const mine = liveOf("pings").filter(p => p.to === me && !p.seen).sort((a, b) => b.ts - a.ts);
+  if (!mine.length) { $("pingBar").style.display = "none"; return; }
+  const p = mine[0], tm = new Date(p.ts).toLocaleTimeString(lang === "ru" ? "ru-RU" : "en-US", { hour: "2-digit", minute: "2-digit" });
+  $("pingText").textContent = t("pingFrom", { p: p.from, t: p.text, time: tm }) + (mine.length > 1 ? "  (+" + (mine.length - 1) + ")" : "");
+  $("pingBar").style.display = "flex";
+}
+$("pingOk").addEventListener("click", () => {
+  liveOf("pings").filter(p => p.to === me && !p.seen).forEach(p => saveRec("pings", Object.assign({}, p, { seen: true })));
+  showPings();
+});
+$("walkNotify").addEventListener("click", () => {
+  if (!arrivalTarget) return;
+  arrivalTarget.on = !arrivalTarget.on; $("walkNotify").classList.toggle("on", arrivalTarget.on);
+  if (arrivalTarget.on) toast(t("notifyOn", { p: otherPerson() }));
+});
+function checkArrival() {
+  if (!arrivalTarget || !arrivalTarget.on || !lastMe) return;
+  if (km(lastMe, arrivalTarget) * 1000 <= 60 && (lastMe.acc || 30) <= 50) {
+    sendPing(t("pingArrived", { pl: arrivalTarget.name })); arrivalTarget.on = false; $("walkNotify").classList.remove("on");
+  }
+}
+
 function buildPricesCSV(all) {
   const rows = [["date", "item", "unit", "store", "price", "currency", "price_kgs", "recorded_by"]];
   let list = liveOf("prices").filter(p => px.products[p.product] && !px.products[p.product].del && px.stores[p.store] && !px.stores[p.store].del);
@@ -3061,6 +3306,7 @@ function buildPricesCSV(all) {
    ===================================================================== */
 function renderAll() {
   renderSync();
+  if (me) showPings();
   if (cfg && me) setTimeout(() => { autoRateCheck(); refreshAqi(false); }, 0);     // both throttle themselves
   if ($("recent").classList.contains("on")) renderRecent();
   if ($("summary").classList.contains("on")) renderSummary();
@@ -3068,7 +3314,7 @@ function renderAll() {
   if ($("prices").classList.contains("on")) renderPrices();
   if ($("add").classList.contains("on") && Object.values(px.cats).some(c => !catOrder || !catOrder.includes(c.k))) renderCats();
 }
-renderPad(); renderAmount(); applyLang();
+renderPad(); renderAmount(); applyLang(); paintPay();
 window.addEventListener("hashchange", nextStep);
 nextStep();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
@@ -3077,7 +3323,7 @@ setInterval(() => { if (!document.hidden && cfg && me) refreshAqi(false); }, 10 
 document.addEventListener("visibilitychange", () => { if (!document.hidden && cfg && me) { autoRateCheck(); refreshAqi(false); } });
 
 // test hook (no secrets exposed beyond what this phone already stores)
-window.__rz = { refreshAqi: f => refreshAqi(f), get aqi() { return aqi; }, haggleInfo: (p, s, q) => haggleInfo(p, s, q), parseSize: s => parseSize(s), autoRateCheck: f => autoRateCheck(f), get shared() { return shared; }, walkRoute: (a, b) => { walkFresh(); return walkRoute(a, b); }, buildPath,  ensureWalk: () => ensureWalk(), syncNow, get entries() { return entries; }, get dirty() { return dirty; }, get px() { return px; }, buildExport, buildCSV, computeSummary, planList };
+window.__rz = { walletOf: p => walletOf(p), get walked() { return walked; }, refreshAqi: f => refreshAqi(f), get aqi() { return aqi; }, haggleInfo: (p, s, q) => haggleInfo(p, s, q), parseSize: s => parseSize(s), autoRateCheck: f => autoRateCheck(f), get shared() { return shared; }, walkRoute: (a, b) => { walkFresh(); return walkRoute(a, b); }, buildPath,  ensureWalk: () => ensureWalk(), syncNow, get entries() { return entries; }, get dirty() { return dirty; }, get px() { return px; }, buildExport, buildCSV, computeSummary, planList };
 })();
 </script>
 </body>
