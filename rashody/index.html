@@ -134,6 +134,24 @@
   .qty{gap:2px;font-size:13px}
   .qty button{width:28px;height:28px;padding:0;border-radius:8px}
   .litem .nm{overflow-wrap:anywhere;line-height:1.25}
+  #pMap{flex:1;position:relative;min-height:0}
+  #pMap.on{display:block}
+  #mapBox{position:absolute;inset:0;background:#e9e5dc}
+  .mapmsg{position:absolute;left:12px;right:12px;top:12px;z-index:800;background:rgba(18,20,24,.93);color:#fff;padding:12px 14px;border-radius:12px;font-size:14px;line-height:1.35;display:none}
+  .mapbtn{position:absolute;right:12px;bottom:28px;z-index:800;width:50px;height:50px;border-radius:25px;font-size:24px;padding:0;background:#fff;color:#2b7cff;border:none;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+  .pinwrap{position:relative;width:44px;height:44px}
+  .pin{width:44px;height:44px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.55);background:#3a4150;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:21px;box-sizing:border-box}
+  .pin img{width:100%;height:100%;object-fit:cover}
+  .pin.home{background:#f0a531;font-size:23px;border-radius:12px}
+  .pinwrap.onlist .pin{border-color:#4a9eff}
+  .badge{position:absolute;top:-7px;right:-7px;background:#2b7cff;color:#fff;border-radius:11px;min-width:22px;height:22px;font:700 12px/18px system-ui;text-align:center;border:2px solid #fff;box-sizing:border-box}
+  .leaflet-popup-content{margin:10px 12px;font-size:14px;color:#111;min-width:180px}
+  .popimg{width:200px;max-width:100%;height:130px;object-fit:cover;border-radius:8px;display:block;margin-bottom:6px;background:#ddd}
+  .popname{font-weight:700;font-size:16px}
+  .popsub{color:#555;font-size:13px;margin-top:2px}
+  .poplist{margin:6px 0 0;padding:0;list-style:none;font-size:13px}
+  .poplist li{display:flex;justify-content:space-between;gap:10px}
+  .popbtn{margin-top:8px;width:100%;height:36px;border-radius:8px;border:none;background:#2b7cff;color:#fff;font-weight:600}
   .total{display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin-top:14px;padding-top:10px;border-top:2px solid var(--line)}
   .addrow{display:flex;gap:8px;margin-top:8px}
   .addrow input{flex:1}
@@ -182,6 +200,7 @@
     <button data-pv="pItems" class="sel" data-i18n="pItems">Items</button>
     <button data-pv="pStores" data-i18n="pStores">Stores</button>
     <button data-pv="pList" data-i18n="pList">List</button>
+    <button data-pv="pMap" data-i18n="pMap">Map</button>
   </div>
   <div class="scroll">
     <div class="pview on" id="pItems">
@@ -209,6 +228,11 @@
         <button id="listClearAll" data-i18n="clearList">Clear list</button>
       </div>
     </div>
+  </div>
+  <div class="pview" id="pMap">
+    <div id="mapBox"></div>
+    <div id="mapMsg" class="mapmsg"></div>
+    <button id="mapMe" class="mapbtn" aria-label="me">◎</button>
   </div>
   <datalist id="productNames"></datalist>
 </section>
@@ -497,7 +521,11 @@ const T = {
     noStores:"No stores yet.", noPrices:"No prices yet.", history:"history", cheapest:"cheapest", listEmpty:"Your list is empty. Add items above.",
     noPriceYet:"No price yet", expectedTotal:"Expected total", remaining:"Still to buy", pickStore:"Pick a store",
     needStore:"Add a store first (Stores tab).", unknownItem:"Not in your items yet — added it.", added:"Added.", qtyLabel:"qty",
-    noDist:"no distance"
+    noDist:"no distance",
+    pMap:"Map", mapDownloading:"Saving the Bishkek map to this phone for offline use… {p}% (9 MB, one time)",
+    mapNeedsNet:"The map downloads once (9 MB). Connect to the internet and open Map again — after that it works offline.",
+    homeLabel:"Home", openStore:"Open store", onList:"From your list:", fromYou:"from you", fromHomeShort:"from home",
+    mapNoPins:"Stores show up here once they have a GPS location — take the store photo while standing there, or tap 📍 in the store. Tap to close."
   },
   ru: {
     living:"ЖИЗНЬ", trip:"ПОЕЗДКА", notePh:"Заметка (необязательно)", recentTitle:"Последние 30", settingsTitle:"Настройки",
@@ -542,7 +570,11 @@ const T = {
     noStores:"Магазинов пока нет.", noPrices:"Цен пока нет.", history:"история", cheapest:"дешевле всего", listEmpty:"Список пуст. Добавьте товары выше.",
     noPriceYet:"Цены пока нет", expectedTotal:"Ожидаемая сумма", remaining:"Осталось купить", pickStore:"Выберите магазин",
     needStore:"Сначала добавьте магазин (вкладка «Магазины»).", unknownItem:"Такого товара не было — добавлен.", added:"Добавлено.", qtyLabel:"шт",
-    noDist:"без расстояния"
+    noDist:"без расстояния",
+    pMap:"Карта", mapDownloading:"Сохраняю карту Бишкека на телефон для работы без сети… {p}% (9 МБ, один раз)",
+    mapNeedsNet:"Карта скачивается один раз (9 МБ). Подключитесь к интернету и откройте «Карту» снова — дальше она работает без сети.",
+    homeLabel:"Дом", openStore:"Открыть магазин", onList:"Из списка:", fromYou:"от вас", fromHomeShort:"от дома",
+    mapNoPins:"Магазины появятся здесь, когда у них будет GPS-место — сфотографируйте магазин, стоя рядом, или нажмите 📍 в магазине. Нажмите, чтобы закрыть."
   }
 };
 const PERSON_RU = { Allen: "Аллен", Sveta: "Света" };
@@ -1320,6 +1352,9 @@ function renderPrices() {
   document.querySelectorAll(".pview").forEach(v => v.classList.toggle("on", v.id === pview));
   const dl = $("productNames"); dl.innerHTML = "";
   liveOf("products").forEach(p => { const o = document.createElement("option"); o.value = p.name; dl.appendChild(o); });
+  document.querySelector("#prices .scroll").style.display = pview === "pMap" ? "none" : "";
+  if (pview === "pMap") { openMap(); return; }
+  stopWatch();
   if (pview === "pItems") renderItems(); else if (pview === "pStores") renderStores(); else renderList();
 }
 
@@ -1638,6 +1673,134 @@ $("listClearAll").addEventListener("click", () => {
   liveOf("list").forEach(l => saveRec("list", Object.assign({}, l, { del: true })));
   delete b.dataset.armed; b.textContent = t("clearList"); renderList();
 });
+
+
+/* ---------- offline map: OpenStreetMap vector tiles for Bishkek, stored once in IndexedDB ---------- */
+const MAP_FILE = "map/bishkek-20261117.pmtiles", MAP_KEY = "map:bishkek-20261117";
+const MAP_BOUNDS = [[42.76, 74.45], [42.97, 74.76]];
+let mapLibP = null, map = null, pinLayer = null, routeLine = null, meMarker = null, meCircle = null, watchId = null, lastMe = null, pinSig = "", mapFitted = false, mapOpening = false;
+function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+function mapLibs() {
+  if (!mapLibP) {
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "vendor/leaflet.css"; document.head.appendChild(l);
+    mapLibP = loadScript("vendor/leaflet.js").then(() => Promise.all([loadScript("vendor/pmtiles.js"), loadScript("vendor/protomaps-leaflet.js")]));
+    mapLibP.catch(() => { mapLibP = null; });
+  }
+  return mapLibP;
+}
+function mapMsg(s, tapClose) {
+  const m = $("mapMsg"); m.textContent = s || ""; m.style.display = s ? "block" : "none"; m.onclick = tapClose ? () => { m.style.display = "none"; } : null;
+}
+async function mapData() {
+  let blob = await idbGet(MAP_KEY);
+  if (blob) return blob;
+  mapMsg(t("mapDownloading", { p: 0 }));
+  const r = await fetch(MAP_FILE, { cache: "no-store" });
+  if (!r.ok) throw new Error("map " + r.status);
+  const total = +r.headers.get("content-length") || 9178175, chunks = [];
+  let got = 0;
+  if (r.body && r.body.getReader) {
+    const rd = r.body.getReader();
+    for (;;) { const { done, value } = await rd.read(); if (done) break; chunks.push(value); got += value.length; mapMsg(t("mapDownloading", { p: Math.min(99, Math.round(got * 100 / total)) })); }
+    blob = new Blob(chunks);
+  } else blob = await r.blob();
+  await idbPut(MAP_KEY, blob);
+  return blob;
+}
+async function openMap() {
+  if (mapOpening) return;
+  mapOpening = true;
+  try {
+    try { await mapLibs(); } catch (e) { mapMsg(t("mapNeedsNet")); return; }
+    if (!map) {
+      let blob;
+      try { blob = await mapData(); } catch (e) { mapMsg(t("mapNeedsNet")); return; }
+      mapMsg("");
+      map = L.map($("mapBox"), { zoomControl: false, maxBounds: L.latLngBounds(MAP_BOUNDS).pad(0.4), minZoom: 11, maxZoom: 19 });
+      map.attributionControl.setPrefix(false);
+      const pm = new pmtiles.PMTiles(new pmtiles.FileSource(new File([blob], "bishkek.pmtiles")));
+      protomapsL.leafletLayer({ url: pm, flavor: "light", lang: lang === "ru" ? "ru" : "en", maxDataZoom: 15,
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>' }).addTo(map);
+      pinLayer = L.layerGroup().addTo(map);
+      map.setView(home ? [home.lat, home.lng] : [42.8746, 74.6122], 14);
+      window.__map = map;
+    }
+    setTimeout(() => map.invalidateSize(), 0);
+    drawPins();
+    startWatch();
+  } finally { mapOpening = false; }
+}
+function pinIcon(inner, cls, badge) {
+  return L.divIcon({ className: "", iconSize: [44, 44], iconAnchor: [22, 22], popupAnchor: [0, -24],
+    html: '<div class="pinwrap ' + (cls || "") + '"><div class="pin' + (cls === "homewrap" ? " home" : "") + '">' + inner + "</div>" + (badge ? '<div class="badge">' + badge + "</div>" : "") + "</div>" });
+}
+function storePopup(s, items) {
+  const d = document.createElement("div");
+  if (s.photo) { const im = document.createElement("img"); im.className = "popimg"; im.alt = ""; d.appendChild(im); photoURL(s.photo).then(u => { if (u) im.src = u; else im.remove(); }); }
+  const n = document.createElement("div"); n.className = "popname"; n.textContent = s.name; d.appendChild(n);
+  const parts = [];
+  if (lastMe) parts.push(fmtKm(km(lastMe, s)) + " " + t("fromYou"));
+  else if (home) parts.push(fmtKm(km(home, s)) + " " + t("fromHomeShort"));
+  if (s.note) parts.push(s.note);
+  if (parts.length) { const sub = document.createElement("div"); sub.className = "popsub"; sub.textContent = parts.join(" · "); d.appendChild(sub); }
+  if (items && items.length) {
+    const h = document.createElement("div"); h.className = "popsub"; h.style.marginTop = "6px"; h.textContent = t("onList"); d.appendChild(h);
+    const ul = document.createElement("ul"); ul.className = "poplist";
+    items.forEach(x => { const li = document.createElement("li"); const a = document.createElement("span"); a.textContent = (x.l.checked ? "✓ " : "") + x.p.name + ((x.l.qty || 1) > 1 ? " ×" + x.l.qty : "");
+      const b = document.createElement("b"); b.textContent = fmtK(priceKGS(x.c) * (x.l.qty || 1)); li.append(a, b); ul.appendChild(li); });
+    d.appendChild(ul);
+  }
+  const btn = document.createElement("button"); btn.className = "popbtn"; btn.textContent = t("openStore");
+  btn.addEventListener("click", () => { map.closePopup(); openStore(s.id); });
+  d.appendChild(btn);
+  return d;
+}
+function drawPins(force) {
+  if (!map) return;
+  const plan = planList();
+  const stores = liveOf("stores").filter(hasLoc);
+  const sig = JSON.stringify([home, stores.map(s => [s.id, s.lat, s.lng, s.photo, s.name, s.note]), plan.order, Object.values(plan.groups).map(g => g.map(x => [x.l.id, x.l.qty, x.l.checked, x.c.id])), routeStart]);
+  if (!force && sig === pinSig) return;
+  pinSig = sig;
+  pinLayer.clearLayers();
+  if (home) L.marker([home.lat, home.lng], { icon: pinIcon("🏠", "homewrap"), zIndexOffset: -100 }).bindPopup('<div class="popname">🏠 ' + esc(t("homeLabel")) + "</div>").addTo(pinLayer);
+  const stopNo = {}; let n = 0;
+  plan.order.forEach(id => { if (hasLoc(px.stores[id])) stopNo[id] = ++n; });
+  for (const s of stores) {
+    const m = L.marker([s.lat, s.lng], { icon: pinIcon("🏪", stopNo[s.id] ? "onlist" : "", stopNo[s.id]), zIndexOffset: stopNo[s.id] ? 400 : 0 });
+    m.bindPopup(() => storePopup(s, plan.groups[s.id]), { maxWidth: 240 });
+    m.addTo(pinLayer);
+    if (s.photo) photoURL(s.photo).then(u => { const el = m.getElement(); if (u && el) { const p = el.querySelector(".pin"); p.innerHTML = ""; const im = document.createElement("img"); im.src = u; im.alt = ""; p.appendChild(im); } });
+  }
+  // dashed line along the shopping route
+  const start = routeStart || (home ? home : null);
+  const pts = (start ? [[start.lat, start.lng]] : []).concat(plan.order.filter(id => hasLoc(px.stores[id])).map(id => [px.stores[id].lat, px.stores[id].lng]));
+  if (pts.length > 1) L.polyline(pts, { color: "#2b7cff", weight: 4, opacity: .75, dashArray: "2 9", lineCap: "round", interactive: false }).addTo(pinLayer);
+  if (!mapFitted) {
+    const all = stores.map(s => [s.lat, s.lng]).concat(home ? [[home.lat, home.lng]] : []);
+    if (all.length > 1) { map.fitBounds(L.latLngBounds(all).pad(0.25), { maxZoom: 16 }); mapFitted = true; }
+    else if (all.length === 1) { map.setView(all[0], 16); mapFitted = true; }
+  }
+  if (!stores.length && $("mapMsg").style.display !== "block") mapMsg(t("mapNoPins"), true);
+}
+function startWatch() {
+  if (watchId != null || !navigator.geolocation || !map) return;
+  watchId = navigator.geolocation.watchPosition(p => {
+    const ll = [p.coords.latitude, p.coords.longitude], acc = p.coords.accuracy || 30;
+    lastMe = { lat: ll[0], lng: ll[1] };
+    if (!meMarker) {
+      meCircle = L.circle(ll, { radius: acc, color: "#2b7cff", weight: 1, fillOpacity: .12, interactive: false }).addTo(map);
+      meMarker = L.circleMarker(ll, { radius: 8, color: "#fff", weight: 3, fillColor: "#2b7cff", fillOpacity: 1, interactive: false }).addTo(map);
+    } else { meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(acc); }
+  }, () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+}
+function stopWatch() { if (watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(watchId); watchId = null; }
+$("mapMe").addEventListener("click", () => {
+  if (lastMe && map) map.setView([lastMe.lat, lastMe.lng], Math.max(map.getZoom(), 16));
+  else { startWatch(); mapMsg(t("gettingLoc")); setTimeout(() => { if ($("mapMsg").textContent === t("gettingLoc")) mapMsg(""); if (lastMe && map) map.setView([lastMe.lat, lastMe.lng], 16); }, 4000); }
+});
+document.addEventListener("visibilitychange", () => { if (document.hidden) stopWatch(); else if ($("prices").classList.contains("on") && pview === "pMap") startWatch(); });
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => { if (b.dataset.view !== "prices") stopWatch(); else if (pview === "pMap") setTimeout(openMap, 0); }));
 
 function buildPricesCSV(all) {
   const rows = [["date", "item", "unit", "store", "price", "currency", "price_kgs", "recorded_by"]];
