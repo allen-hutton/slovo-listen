@@ -30,7 +30,15 @@
   h2{font-size:18px;margin:4px 0 10px}
   h3{font-size:15px;margin:18px 0 6px;color:var(--muted);font-weight:600}
   .note{font-size:13px;color:var(--muted);line-height:1.4}
-  .sync{font-size:12px;color:var(--muted);text-align:right;padding:4px 14px 0;min-height:18px}
+  .sync{font-size:12px;color:var(--muted);text-align:right;padding:4px 14px 0;min-height:18px;flex:1}
+  .topbar{display:flex;align-items:center}
+  .aqipill{height:22px;margin:4px 0 0 12px;padding:0 9px;border-radius:11px;font-size:12px;font-weight:700;border:none;color:#111}
+  .aqihead{display:flex;gap:14px;align-items:center}
+  .aqibig{width:84px;height:84px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#111;flex:0 0 84px}
+  .aqichart{display:flex;align-items:flex-end;gap:2px;height:90px;margin:8px 0 2px;position:relative}
+  .aqichart .b{flex:1;border-radius:3px 3px 0 0;min-height:2px;position:relative}
+  .aqichart .b span{position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--muted)}
+  .aqichart .b.best{outline:2px solid #fff}
   .sync.warn{color:var(--trip)}
 
   /* ---------- entry ---------- */
@@ -202,6 +210,13 @@
   #pMap .sharebtn.on{background:#e85d9c;color:#fff}
   .pin.person{background:#e85d9c;font:700 18px/38px system-ui;color:#fff;border-radius:50%}
   .pinwrap.stale .pin.person{background:#9a7b8a}
+  .typechips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}
+  .typechips::-webkit-scrollbar{display:none}
+  .typechips button{flex:0 0 auto;height:34px;padding:0 10px;border-radius:17px;font-size:13px;white-space:nowrap}
+  .typechips button.sel{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .stars{display:flex;gap:2px;margin-top:6px}
+  .stars button{background:none;border:none;font-size:26px;padding:0 3px;height:34px;color:#f0a531}
+  .starline{color:#f0a531;font-size:12px;letter-spacing:1px}
   .total{display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin-top:14px;padding-top:10px;border-top:2px solid var(--line)}
   .addrow{display:flex;gap:8px;margin-top:8px}
   .addrow input{flex:1}
@@ -218,7 +233,17 @@
 </head>
 <body>
 
-<div class="sync" id="sync"></div>
+<div class="topbar"><button id="aqiPill" class="aqipill" style="display:none"></button><div class="sync" id="sync"></div></div>
+<div class="sheet" id="aqiSheet">
+  <div class="card">
+    <div class="aqihead"><div class="aqibig" id="aqiBig"></div><div><div class="popname" id="aqiCat" style="color:var(--text)"></div><div class="note" id="aqiPm" style="margin:2px 0 0"></div></div></div>
+    <p id="aqiAdvice" style="margin:10px 0 4px;font-size:15px;line-height:1.4"></p>
+    <p class="note" id="aqiBest" style="margin:6px 0"></p>
+    <div class="aqichart" id="aqiChart"></div>
+    <p class="note" id="aqiSrc"></p>
+    <div class="row"><button id="aqiRefresh" data-i18n="refresh">Refresh</button><button id="aqiClose" class="primary" data-i18n="close">Close</button></div>
+  </div>
+</div>
 
 <!-- ============ ENTRY ============ -->
 <section class="view on" id="add">
@@ -265,6 +290,7 @@
     <div class="pview" id="pStores">
       <div class="row" style="margin-top:0"><button id="newStoreBtn" class="primary" data-i18n="newStore">＋ New store</button><button id="homeBtn">🏠</button></div>
       <p class="note" id="homeInfo" style="margin:6px 0 0"></p>
+      <div class="typechips" id="placeFilter"></div>
       <div id="storeList"></div>
     </div>
     <div class="pview" id="pList">
@@ -327,7 +353,7 @@
       <span class="note" style="margin:0" data-i18n="qtyLabel2">Quantity</span>
       <div class="qty"><button id="bMinus">−</button><span id="bQty">×1</span><button id="bPlus">+</button></div>
     </div>
-    <label data-i18n="storeName">Store / stall</label>
+    <label data-i18n="whereLbl">Where</label>
     <select id="bStore"></select>
     <label data-i18n="category">Category</label>
     <select id="bCat"></select>
@@ -347,7 +373,7 @@
   <div class="card">
     <div class="buyhead"><img id="scanImg" class="scanimg" alt=""><div id="scanStatus" class="note" style="margin:0;flex:1"></div></div>
     <div id="scanBody" style="display:none">
-      <label data-i18n="storeName">Store / stall</label>
+      <label data-i18n="whereLbl">Where</label>
       <select id="scStore"></select>
       <div id="scItems"></div>
       <div class="row"><button id="scSave" class="primary" data-i18n="savePrices">Save checked prices</button></div>
@@ -395,6 +421,8 @@
     <div class="bigphoto" id="sPhoto"></div>
     <label data-i18n="storeName">Store / stall</label>
     <input id="sName" autocomplete="off">
+    <div class="typechips" id="sType"></div>
+    <div class="stars" id="sStars"></div>
     <label data-i18n="distLabel">Distance (any number — lower = closer)</label>
     <input id="sDist" type="number" inputmode="decimal" step="0.1" min="0">
     <div class="row" style="margin-top:8px;align-items:center"><button id="sLoc" data-i18n="saveLoc">📍 I'm here — save location</button></div>
@@ -443,6 +471,13 @@
       <button id="claudeKeySave" class="primary" style="flex:0 0 96px" data-i18n="save">Save</button>
     </div>
     <p class="note" id="claudeKeyNote"></p>
+
+    <label data-i18n="aqiTokenLabel">Air quality station token (optional)</label>
+    <div class="row" style="margin-top:0">
+      <input id="aqiToken" type="password" autocomplete="off" placeholder="aqicn.org token">
+      <button id="aqiTokenSave" class="primary" style="flex:0 0 96px" data-i18n="save">Save</button>
+    </div>
+    <p class="note" id="aqiTokenNote"></p>
 
     <label data-i18n="langLabel">Language</label>
     <div class="seg" id="langSeg">
@@ -663,18 +698,18 @@ const T = {
     importBtn:"Add these entries", localWarn:"Entries live only on this phone (inside the Home Screen app). Every few days, tap “Copy for Claude” and paste it somewhere safe as a backup.",
     goShared:"Set up syncing between phones", localStatus:"On this phone only · {n} entries", imported:"Added {a} entries ({s} already here).",
     importNone:"No entries found — paste the whole “Copy for Claude” text.",
-    tabPrices:"Prices", pItems:"Items", pStores:"Stores", pList:"List", searchPh:"Search items", newStore:"＋ New store",
+    tabPrices:"Prices", pItems:"Items", pStores:"Places", pList:"List", searchPh:"Search items", newStore:"＋ New place",
     listAddPh:"Add an item to the list", clearChecked:"Remove checked", clearList:"Clear list", itemName:"Item",
     unitLabel:"Size / unit", unitPh:"e.g. 1 kg, 85 g pouch", noteLabel:"Note", pricesByStore:"Prices by store",
-    addPrice:"Add / update a price", addToList:"＋ List", deleteItem:"Delete item", storeName:"Store / stall",
+    addPrice:"Add / update a price", addToList:"＋ List", deleteItem:"Delete item", storeName:"Name",
     distLabel:"Distance (any number — lower = closer; used if no GPS location)",
     saveLoc:"📍 I'm here — save location", locSaved:"📍 Location saved (±{m} m)", noLoc:"No GPS location yet — taking a photo here saves it.",
     locFail:"Couldn't get your location. Allow Location for this site in iPhone Settings → Privacy → Location Services → Safari Websites.",
     homeSet:"🏠 Home saved — store distances are measured from here.", homeNone:"Tap 🏠 at home to save it as the starting point.", homeConfirm:"Save this spot as home?",
     routeBtn:"📍 Shortest route from here", routeFrom:"Route from {from}: {km} km straight-line, store to store.", fromHere:"your location", fromHome:"home",
     routeNoGps:"Stores without a GPS location go last, by their distance number.", gettingLoc:"Getting location…", pricesHere:"Prices here", quickPrice:"Add a price here",
-    addPriceBtn:"Add price", deleteStore:"Delete store", tapPhoto:"Tap to add a photo", noItems:"No items yet. Add one with ＋, or from a store.",
-    noStores:"No stores yet.", noPrices:"No prices yet.", history:"history", cheapest:"cheapest", listEmpty:"Your list is empty. Add items above.",
+    addPriceBtn:"Add price", deleteStore:"Delete place", tapPhoto:"Tap to add a photo", noItems:"No items yet. Add one with ＋, or from a store.",
+    noStores:"No places yet.", noPrices:"No prices yet.", history:"history", cheapest:"cheapest", listEmpty:"Your list is empty. Add items above.",
     noPriceYet:"No price yet", expectedTotal:"Expected total", remaining:"Still to buy", pickStore:"Pick a store",
     needStore:"Add a store first (Stores tab).", unknownItem:"Not in your items yet — added it.", added:"Added.", qtyLabel:"qty",
     noDist:"no distance",
@@ -699,6 +734,13 @@ const T = {
     autoRate:"Update it automatically once a day (when online)", rateAuto:"Updated automatically {d} ({src}).", rateManual:"Set by hand — automatic updates are off.",
     claudeKeyLabel:"Claude API key — reads price tags and receipts", keyFromSlovo:"Using the key from Slovo Listen.", keySaved:"Saved on this phone only.", keyNone:"Not set. Sveta's phone needs its own key.",
     shareOn:"Sharing your location with {p} while Map is open.", shareOff:"Location sharing off.", seenAgo:"{p} · {m} min ago", seenNow:"{p} · just now", walkToThem:"🚶 Walk to {p}", awayM:"{d} away",
+    whereLbl:"Store / place", allPlaces:"All", favourites:"Favourites", refresh:"Refresh",
+    aqiTokenLabel:"Air quality station token (optional)", aqiTokenSet:"Using real monitoring stations (aqicn.org).", aqiTokenNone:"Without it the app shows a model estimate, which can read low in Bishkek's winter smog. Free token: aqicn.org/data-platform/token",
+    aqGood:"Good", aqMod:"Moderate", aqUsg:"Unhealthy for sensitive people", aqBad:"Unhealthy", aqVbad:"Very unhealthy", aqHaz:"Hazardous",
+    aqGoodTip:"Fine for walking.", aqModTip:"Fine for walking; unusually sensitive people may want shorter outings.", aqUsgTip:"OK for errands; keep long walks for a better hour, and consider a mask if you're sensitive.",
+    aqBadTip:"Keep outdoor time short. An N95/KN95 mask helps on long walks.", aqVbadTip:"Avoid long walks. Wear an N95/KN95 outside and keep windows shut.", aqHazTip:"Stay inside if you can. N95/KN95 outside, windows shut.",
+    aqBest:"Best time to walk in the next 24 h: {from}:00–{to}:00 (about {v}).", aqSrcStation:"Measured at station: {s}.", aqSrcModel:"* Model estimate (Open-Meteo / CAMS), not a station — often reads low in Bishkek's winter smog. Add a station token in Settings for real readings.",
+    aqUpdated:"Updated {m} min ago.",
     pMap:"Map", mapDownloading:"Saving the Bishkek map to this phone for offline use… {p}% (9 MB, one time)",
     mapNeedsNet:"The map downloads once (9 MB). Connect to the internet and open Map again — after that it works offline.",
     homeLabel:"Home", openStore:"Open store", onList:"From your list:", fromYou:"from you", fromHomeShort:"from home",
@@ -733,18 +775,18 @@ const T = {
     importBtn:"Добавить записи", localWarn:"Записи хранятся только на этом телефоне (в приложении на экране «Домой»). Раз в несколько дней копируйте их для Claude и сохраняйте как резервную копию.",
     goShared:"Настроить синхронизацию", localStatus:"Только на этом телефоне · записей: {n}", imported:"Добавлено: {a} (уже были: {s}).",
     importNone:"Записи не найдены — вставьте весь текст «Копировать для Claude».",
-    tabPrices:"Цены", pItems:"Товары", pStores:"Магазины", pList:"Список", searchPh:"Поиск товара", newStore:"＋ Новый магазин",
+    tabPrices:"Цены", pItems:"Товары", pStores:"Места", pList:"Список", searchPh:"Поиск товара", newStore:"＋ Новое место",
     listAddPh:"Добавить товар в список", clearChecked:"Убрать купленное", clearList:"Очистить список", itemName:"Товар",
     unitLabel:"Размер / единица", unitPh:"напр. 1 кг, пакетик 85 г", noteLabel:"Заметка", pricesByStore:"Цены по магазинам",
-    addPrice:"Добавить / обновить цену", addToList:"＋ Список", deleteItem:"Удалить товар", storeName:"Магазин / точка",
+    addPrice:"Добавить / обновить цену", addToList:"＋ Список", deleteItem:"Удалить товар", storeName:"Название",
     distLabel:"Расстояние (любое число — меньше = ближе; если нет GPS)",
     saveLoc:"📍 Я здесь — сохранить место", locSaved:"📍 Место сохранено (±{m} м)", noLoc:"GPS-места пока нет — фото здесь сохранит его.",
     locFail:"Не удалось определить место. Разрешите геолокацию: Настройки iPhone → Конфиденциальность → Службы геолокации → Сайты Safari.",
     homeSet:"🏠 Дом сохранён — расстояния считаются от него.", homeNone:"Нажмите 🏠 дома, чтобы сохранить точку старта.", homeConfirm:"Сохранить это место как дом?",
     routeBtn:"📍 Кратчайший маршрут отсюда", routeFrom:"Маршрут от {from}: {km} км по прямой между магазинами.", fromHere:"вашего места", fromHome:"дома",
     routeNoGps:"Магазины без GPS идут в конце, по номеру расстояния.", gettingLoc:"Определяю место…", pricesHere:"Цены здесь", quickPrice:"Добавить цену здесь",
-    addPriceBtn:"Добавить цену", deleteStore:"Удалить магазин", tapPhoto:"Нажмите, чтобы добавить фото", noItems:"Товаров пока нет. Добавьте через ＋ или из магазина.",
-    noStores:"Магазинов пока нет.", noPrices:"Цен пока нет.", history:"история", cheapest:"дешевле всего", listEmpty:"Список пуст. Добавьте товары выше.",
+    addPriceBtn:"Добавить цену", deleteStore:"Удалить место", tapPhoto:"Нажмите, чтобы добавить фото", noItems:"Товаров пока нет. Добавьте через ＋ или из магазина.",
+    noStores:"Мест пока нет.", noPrices:"Цен пока нет.", history:"история", cheapest:"дешевле всего", listEmpty:"Список пуст. Добавьте товары выше.",
     noPriceYet:"Цены пока нет", expectedTotal:"Ожидаемая сумма", remaining:"Осталось купить", pickStore:"Выберите магазин",
     needStore:"Сначала добавьте магазин (вкладка «Магазины»).", unknownItem:"Такого товара не было — добавлен.", added:"Добавлено.", qtyLabel:"шт",
     noDist:"без расстояния",
@@ -769,6 +811,13 @@ const T = {
     autoRate:"Обновлять автоматически раз в день (при интернете)", rateAuto:"Обновлено автоматически {d} ({src}).", rateManual:"Задан вручную — автообновление выключено.",
     claudeKeyLabel:"Ключ Claude API — читает ценники и чеки", keyFromSlovo:"Используется ключ из Slovo Listen.", keySaved:"Сохранён только на этом телефоне.", keyNone:"Не задан. Телефону Светы нужен свой ключ.",
     shareOn:"Ваше место видно: {p}, пока открыта «Карта».", shareOff:"Показ места выключен.", seenAgo:"{p} · {m} мин назад", seenNow:"{p} · сейчас", walkToThem:"🚶 Пешком к: {p}", awayM:"{d} отсюда",
+    whereLbl:"Магазин / место", allPlaces:"Все", favourites:"Избранное", refresh:"Обновить",
+    aqiTokenLabel:"Токен станций качества воздуха (необязательно)", aqiTokenSet:"Используются реальные станции (aqicn.org).", aqiTokenNone:"Без него показывается модельная оценка — зимой в Бишкеке она часто занижена. Бесплатный токен: aqicn.org/data-platform/token",
+    aqGood:"Хорошо", aqMod:"Умеренно", aqUsg:"Вредно для чувствительных", aqBad:"Вредно", aqVbad:"Очень вредно", aqHaz:"Опасно",
+    aqGoodTip:"Можно гулять.", aqModTip:"Можно гулять; очень чувствительным — покороче.", aqUsgTip:"Для дел нормально; долгие прогулки — в час получше, чувствительным — маска.",
+    aqBadTip:"Поменьше на улице. На долгих прогулках помогает маска N95/KN95.", aqVbadTip:"Без долгих прогулок. На улице маска N95/KN95, окна закрыты.", aqHazTip:"По возможности оставайтесь дома. На улице N95/KN95, окна закрыты.",
+    aqBest:"Лучшее время для прогулки в ближайшие 24 ч: {from}:00–{to}:00 (около {v}).", aqSrcStation:"Измерено на станции: {s}.", aqSrcModel:"* Модельная оценка (Open-Meteo / CAMS), не станция — зимой в Бишкеке часто занижена. Добавьте токен станций в настройках.",
+    aqUpdated:"Обновлено {m} мин назад.",
     pMap:"Карта", mapDownloading:"Сохраняю карту Бишкека на телефон для работы без сети… {p}% (9 МБ, один раз)",
     mapNeedsNet:"Карта скачивается один раз (9 МБ). Подключитесь к интернету и откройте «Карту» снова — дальше она работает без сети.",
     homeLabel:"Дом", openStore:"Открыть магазин", onList:"Из списка:", fromYou:"от вас", fromHomeShort:"от дома",
@@ -1243,6 +1292,8 @@ function renderSettings() {
   const ck = claudeKey();
   $("claudeKeyNote").textContent = !ck ? t("keyNone") : ck.src === "slovo" ? t("keyFromSlovo") : t("keySaved");
   $("claudeKey").placeholder = ck && ck.src === "own" ? "•••• " + ck.k.slice(-4) : "sk-ant-…";
+  const at = LS.get("aqiToken", ""); $("aqiToken").placeholder = at ? "•••• " + at.slice(-4) : "aqicn.org token";
+  $("aqiTokenNote").textContent = at ? t("aqiTokenSet") : t("aqiTokenNone");
   document.querySelectorAll("[data-me]").forEach(b => b.classList.toggle("sel", b.dataset.me === me));
   if (!local) $("syncDetail").textContent = (cfg ? cfg.repo + " · " : "") + t("synced") + ": " +
     (lastSync ? new Date(lastSync).toLocaleString(lang === "ru" ? "ru-RU" : "en-US") : t("never"));
@@ -1256,12 +1307,16 @@ $("rateSave").addEventListener("click", () => {
   toast(t("rateSaved"));
 });
 $("autoRate").addEventListener("change", () => { LS.set("autoRate", $("autoRate").checked); if ($("autoRate").checked) autoRateCheck(true); renderSettings(); });
+$("aqiTokenSave").addEventListener("click", () => { LS.set("aqiToken", $("aqiToken").value.trim()); $("aqiToken").value = ""; toast(t("saved")); renderSettings(); refreshAqi(true); });
 $("claudeKeySave").addEventListener("click", () => { LS.set("claudeKey", $("claudeKey").value.trim()); $("claudeKey").value = ""; toast(t("saved")); renderSettings(); });
 // official-ish market rate, at most once a day; both phones share whichever updated first
+let lastRateTry = 0;
 async function autoRateCheck(force) {
   if (!LS.get("autoRate", true) || navigator.onLine === false) return;
   const today = localDate(new Date());
   if (!force && shared.src && shared.day === today) return;
+  if (!force && Date.now() - lastRateTry < 10 * 60000) return;
+  lastRateTry = Date.now();
   let v = null, src = "";
   try { const r = await fetch("https://open.er-api.com/v6/latest/USD", { cache: "no-store" }); const j = await r.json(); v = j && j.rates && j.rates.KGS; src = "open.er-api.com"; } catch (e) {}
   if (!(v > 50 && v < 200)) {
@@ -1491,6 +1546,17 @@ function stamp(r) { r.upd = Math.max(Date.now(), (r.upd || 0) + 1); r.editor = m
 function saveRec(k, r) { px[k][r.id] = stamp(Object.assign({}, r)); dirty = true; persist(); scheduleSync(300); return px[k][r.id]; }
 function priceKGS(p) { return p.cur === "USD" ? p.amt * rate() : p.amt; }
 function fmtPrice(p) { return p.cur === "USD" ? fmtU(p.amt) : fmtK(p.amt); }
+// kinds of places: the shopping features work for any of them, the type just sets the icon and filter
+const PLACE_TYPES = [
+  { k: "shop", e: "🏪", en: "Shop", ru: "Магазин" }, { k: "stall", e: "🧺", en: "Bazaar stall", ru: "Точка на базаре" },
+  { k: "cafe", e: "☕", en: "Café", ru: "Кафе" }, { k: "food", e: "🍢", en: "Restaurant", ru: "Ресторан" },
+  { k: "barber", e: "💈", en: "Barber / salon", ru: "Парикмахер" }, { k: "clinic", e: "🏥", en: "Clinic / doctor", ru: "Клиника" },
+  { k: "pharmacy", e: "💊", en: "Pharmacy", ru: "Аптека" }, { k: "exchange", e: "💱", en: "Exchange", ru: "Обменка" },
+  { k: "atm", e: "🏧", en: "ATM / bank", ru: "Банкомат, банк" }, { k: "service", e: "🔧", en: "Repair / service", ru: "Ремонт, услуги" },
+  { k: "sight", e: "🏞", en: "Park / sight", ru: "Парк, место" }, { k: "people", e: "🏠", en: "Family / friends", ru: "Родные, друзья" },
+  { k: "other", e: "📍", en: "Other", ru: "Другое" }
+];
+function placeType(s) { return PLACE_TYPES.find(x => x.k === ((s && s.type) || "shop")) || PLACE_TYPES[0]; }
 function storeName(id) { const s = px.stores[id]; return s && !s.del ? s.name : "?"; }
 function storeDist(id) { const s = px.stores[id]; const d = s && !s.del ? parseFloat(s.dist) : NaN; return isNaN(d) ? Infinity : d; }
 function historyFor(productId, storeId) {
@@ -2051,16 +2117,26 @@ $("productSheet").addEventListener("click", ev => { if (ev.target === $("product
 function renderStores() {
   const box = $("storeList"); box.innerHTML = "";
   $("homeInfo").textContent = home ? t("homeSet") : t("homeNone");
-  const stores = liveOf("stores").sort((a, b) => (storeSortKey(a.id) - storeSortKey(b.id)) || a.name.localeCompare(b.name));
+  const all = liveOf("stores");
+  const fb = $("placeFilter"); fb.innerHTML = "";
+  const present = PLACE_TYPES.filter(pt => all.some(s => placeType(s).k === pt.k));
+  if (present.length > 1) {
+    const chip = (k, label) => { const b = document.createElement("button"); b.textContent = label; b.dataset.type = k; b.classList.toggle("sel", placeFilter === k); b.addEventListener("click", () => { placeFilter = k; renderStores(); }); fb.appendChild(b); };
+    chip("", t("allPlaces")); present.forEach(pt => chip(pt.k, pt.e + " " + (lang === "ru" ? pt.ru : pt.en)));
+    if (all.some(s => s.stars >= 4)) chip("★", "★ " + t("favourites")); else if (placeFilter === "★") placeFilter = "";
+  } else placeFilter = "";
+  const stores = all.filter(s => !placeFilter || (placeFilter === "★" ? s.stars >= 4 : placeType(s).k === placeFilter))
+    .sort((a, b) => (storeSortKey(a.id) - storeSortKey(b.id)) || a.name.localeCompare(b.name));
   if (!stores.length) { box.innerHTML = '<p class="note">' + t("noStores") + "</p>"; return; }
   for (const s of stores) {
     const row = document.createElement("div"); row.className = "item";
-    row.appendChild(thumbEl(s.photo, "🏪"));
+    row.appendChild(thumbEl(s.photo, placeType(s).e));
     const l = document.createElement("div"); l.className = "l";
     const tt = document.createElement("div"); tt.className = "t"; tt.textContent = s.name;
+    if (s.stars) { const st = document.createElement("span"); st.className = "starline"; st.textContent = " " + "★".repeat(s.stars); tt.appendChild(st); }
     const sub = document.createElement("div"); sub.className = "s";
     const n = new Set(liveOf("prices").filter(p => p.store === s.id && px.products[p.product] && !px.products[p.product].del).map(p => p.product)).size;
-    sub.textContent = (home && hasLoc(s) ? "📍 " + fmtKm(km(home, s)) : hasLoc(s) ? "📍" : isFinite(storeDist(s.id)) ? storeDist(s.id) : t("noDist")) + " · " + n + " " + (lang === "ru" ? "тов." : "items") + (s.note ? " · " + s.note : "");
+    sub.textContent = (home && hasLoc(s) ? "📍 " + fmtKm(km(home, s)) : hasLoc(s) ? "📍" : isFinite(storeDist(s.id)) ? storeDist(s.id) : t("noDist")) + (n ? " · " + n + " " + (lang === "ru" ? "тов." : "items") : "") + (s.note ? " · " + s.note : "");
     l.append(tt, sub);
     row.appendChild(l);
     row.addEventListener("click", () => openStore(s.id));
@@ -2068,7 +2144,16 @@ function renderStores() {
   }
   hydratePhotos(box);
 }
-let curStore = null, sPendingPhoto, sqCurVal = "KGS", sPendingLoc;
+let curStore = null, sPendingPhoto, sqCurVal = "KGS", sPendingLoc, sTypeVal = "shop", sStarsVal = 0, placeFilter = "";
+function paintPlaceType() {
+  const box = $("sType"); box.innerHTML = "";
+  PLACE_TYPES.forEach(pt => { const b = document.createElement("button"); b.textContent = pt.e + " " + (lang === "ru" ? pt.ru : pt.en); b.dataset.type = pt.k;
+    b.classList.toggle("sel", sTypeVal === pt.k); b.addEventListener("click", () => { sTypeVal = pt.k; paintPlaceType(); }); box.appendChild(b); });
+  const sel = box.querySelector(".sel"); if (sel) setTimeout(() => sel.scrollIntoView({ inline: "center", block: "nearest" }), 0);
+  const st = $("sStars"); st.innerHTML = "";
+  for (let i = 1; i <= 5; i++) { const b = document.createElement("button"); b.textContent = i <= sStarsVal ? "★" : "☆"; b.dataset.star = i;
+    b.addEventListener("click", () => { sStarsVal = sStarsVal === i ? 0 : i; paintPlaceType(); }); st.appendChild(b); }
+}
 function showStoreLoc() {
   const s = px.stores[curStore], l = sPendingLoc || (hasLoc(s) ? s : null);
   $("sLocInfo").textContent = l ? t("locSaved", { m: l.acc || "?" }) + (home ? " · " + fmtKm(km(home, l)) + " 🏠" : "") : t("noLoc");
@@ -2105,13 +2190,15 @@ $("routeBtn").addEventListener("click", async () => {
 });
 $("newStoreBtn").addEventListener("click", () => {
   const n = liveOf("stores").length;
-  const rec = saveRec("stores", { id: uid(), name: (lang === "ru" ? "Магазин " : "Store ") + (n + 1), dist: n + 1, note: "", photo: null });
+  const ty = placeFilter && placeFilter !== "★" ? placeFilter : "shop";
+  const rec = saveRec("stores", { id: uid(), name: (lang === "ru" ? "Место " : "Place ") + (n + 1), dist: n + 1, note: "", photo: null, type: ty });
   renderStores(); openStore(rec.id, true);
 });
 function openStore(id, focusName) {
   const s = px.stores[id]; if (!s) return;
   curStore = id; sPendingPhoto = undefined; sPendingLoc = undefined;
   $("sName").value = s.name; $("sDist").value = isFinite(storeDist(id)) ? s.dist : ""; $("sNote").value = s.note || "";
+  sTypeVal = placeType(s).k; sStarsVal = s.stars || 0; paintPlaceType();
   bigPhoto($("sPhoto"), s.photo);
   $("sqName").value = ""; $("sqAmt").value = ""; sqCurVal = "KGS"; $("sqCur").textContent = sqCurVal;
   const del = $("sDelete"); delete del.dataset.armed; del.textContent = t("deleteStore");
@@ -2162,10 +2249,10 @@ $("sqAdd").addEventListener("click", () => {
 $("sSave").addEventListener("click", () => {
   const s = px.stores[curStore]; if (!s) return;
   const d = parseFloat($("sDist").value);
-  const upd = Object.assign({}, s, { name: $("sName").value.trim() || s.name, dist: isNaN(d) ? null : d, note: $("sNote").value.trim() });
+  const upd = Object.assign({}, s, { name: $("sName").value.trim() || s.name, dist: isNaN(d) ? null : d, note: $("sNote").value.trim(), type: sTypeVal, stars: sStarsVal });
   if (sPendingPhoto !== undefined) upd.photo = sPendingPhoto;
   if (sPendingLoc) { upd.lat = sPendingLoc.lat; upd.lng = sPendingLoc.lng; upd.acc = sPendingLoc.acc; }
-  if (["name", "dist", "note", "photo", "lat", "lng"].some(k => (upd[k] ?? "") !== (s[k] ?? ""))) saveRec("stores", upd);
+  if (["name", "dist", "note", "photo", "lat", "lng", "type", "stars"].some(k => (upd[k] ?? "") !== (s[k] ?? ""))) saveRec("stores", upd);
   $("storeSheet").classList.remove("open"); curStore = null; renderPrices();
 });
 $("sClose").addEventListener("click", () => { $("storeSheet").classList.remove("open"); curStore = null; renderPrices(); });
@@ -2345,6 +2432,7 @@ function storePopup(s, items) {
   const d = document.createElement("div");
   if (s.photo) { const im = document.createElement("img"); im.className = "popimg"; im.alt = ""; d.appendChild(im); photoURL(s.photo).then(u => { if (u) im.src = u; else im.remove(); }); }
   const n = document.createElement("div"); n.className = "popname"; n.textContent = s.name; d.appendChild(n);
+  { const ty = document.createElement("div"); ty.className = "popsub"; ty.textContent = placeType(s).e + " " + (lang === "ru" ? placeType(s).ru : placeType(s).en) + (s.stars ? "  " + "★".repeat(s.stars) : ""); d.appendChild(ty); }
   const parts = [];
   if (lastMe) parts.push(fmtKm(km(lastMe, s)) + " " + t("fromYou"));
   else if (home) parts.push(fmtKm(km(home, s)) + " " + t("fromHomeShort"));
@@ -2370,7 +2458,7 @@ function drawPins(force) {
   if (!map) return;
   const plan = planList();
   const stores = liveOf("stores").filter(hasLoc);
-  const sig = JSON.stringify([home, stores.map(s => [s.id, s.lat, s.lng, s.photo, s.name, s.note]), plan.order, Object.values(plan.groups).map(g => g.map(x => [x.l.id, x.l.qty, x.l.checked, x.c.id])), routeStart]);
+  const sig = JSON.stringify([home, stores.map(s => [s.id, s.lat, s.lng, s.photo, s.name, s.note, s.type, s.stars]), plan.order, Object.values(plan.groups).map(g => g.map(x => [x.l.id, x.l.qty, x.l.checked, x.c.id])), routeStart]);
   if (mapMode) return;                       // don't redraw under your finger while moving/editing/recording
   if (!force && sig === pinSig) return;
   pinSig = sig;
@@ -2380,7 +2468,7 @@ function drawPins(force) {
   const stopNo = {}; let n = 0;
   plan.order.forEach(id => { if (hasLoc(px.stores[id])) stopNo[id] = ++n; });
   for (const s of stores) {
-    const m = L.marker([s.lat, s.lng], { icon: pinIcon("🏪", stopNo[s.id] ? "onlist" : "", stopNo[s.id]), zIndexOffset: stopNo[s.id] ? 400 : 0 });
+    const m = L.marker([s.lat, s.lng], { icon: pinIcon(placeType(s).e, stopNo[s.id] ? "onlist" : "", stopNo[s.id]), zIndexOffset: stopNo[s.id] ? 400 : 0 });
     pinMarkers[s.id] = m;
     m.bindPopup(() => storePopup(s, plan.groups[s.id]), { maxWidth: 240 });
     m.addTo(pinLayer);
@@ -2881,6 +2969,84 @@ $("scTotal").addEventListener("click", () => {
 });
 $("scClose").addEventListener("click", () => $("scanSheet").classList.remove("open"));
 
+
+/* ---------- air quality: station reading (aqicn token) or model estimate (Open-Meteo), plus a 24 h outlook ---------- */
+let aqi = LS.get("aqi", null), aqiBusy = false;
+const AQI_BANDS = [[50, "#4cc36b", "aqGood"], [100, "#f2d22e", "aqMod"], [150, "#f59a3a", "aqUsg"], [200, "#e8483c", "aqBad"], [300, "#9b59b6", "aqVbad"], [1e9, "#8e2b3a", "aqHaz"]];
+function aqBand(v) { return AQI_BANDS.find(b => v <= b[0]); }
+function aqEmoji(v) { return v <= 50 ? "🙂" : v <= 100 ? "😐" : v <= 150 ? "😕" : v <= 200 ? "😷" : "☠️"; }
+function aqPos() { return lastMe || home || { lat: 42.8746, lng: 74.6122 }; }
+let lastAqiTry = 0;
+async function refreshAqi(force) {
+  if (aqiBusy || navigator.onLine === false) return;
+  if (!force && aqi && Date.now() - aqi.ts < 30 * 60000) return;
+  if (!force && Date.now() - lastAqiTry < 5 * 60000) return;
+  lastAqiTry = Date.now();
+  aqiBusy = true;
+  const p = aqPos(), out = { ts: Date.now(), lat: p.lat, lng: p.lng };
+  try {
+    const r = await fetch("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=" + p.lat.toFixed(4) + "&longitude=" + p.lng.toFixed(4) +
+      "&current=us_aqi,pm2_5,pm10&hourly=us_aqi,pm2_5&timezone=auto&forecast_days=2", { cache: "no-store" });
+    const j = await r.json();
+    if (j && j.current) out.model = { aqi: Math.round(j.current.us_aqi), pm25: j.current.pm2_5, time: j.current.time };
+    if (j && j.hourly) out.hourly = { t: j.hourly.time, aqi: j.hourly.us_aqi };
+  } catch (e) {}
+  const tok = LS.get("aqiToken", "");
+  if (tok) {
+    try {
+      const r = await fetch("https://api.waqi.info/feed/geo:" + p.lat.toFixed(4) + ";" + p.lng.toFixed(4) + "/?token=" + encodeURIComponent(tok), { cache: "no-store" });
+      const j = await r.json();
+      if (j && j.status === "ok" && j.data && +j.data.aqi >= 0) out.station = { aqi: +j.data.aqi, pm25: j.data.iaqi && j.data.iaqi.pm25 ? j.data.iaqi.pm25.v : null,
+        name: j.data.city && j.data.city.name, time: j.data.time && (j.data.time.iso || j.data.time.s) };
+    } catch (e) {}
+  }
+  aqiBusy = false;
+  if (out.model || out.station) { aqi = out; LS.set("aqi", aqi); }
+  paintAqi();
+}
+function aqNow() { if (!aqi) return null; const s = aqi.station || aqi.model; return s ? Object.assign({ src: aqi.station ? "station" : "model" }, s) : null; }
+function paintAqi() {
+  const n = aqNow(), pill = $("aqiPill");
+  if (!n) { pill.style.display = "none"; return; }
+  const b = aqBand(n.aqi), old = Date.now() - aqi.ts > 3 * 3600000;
+  pill.style.display = ""; pill.style.background = old ? "#5b6474" : b[1]; pill.style.color = old || n.aqi > 200 ? "#fff" : "#111";
+  pill.textContent = aqEmoji(n.aqi) + " " + n.aqi + (n.src === "model" ? "*" : "");
+  pill.title = t(b[2]);
+  if ($("aqiSheet").classList.contains("open")) fillAqiSheet();
+}
+function bestWindow() {
+  // lowest 3-hour stretch between 7:00 and 21:00 over the next ~24 h
+  if (!aqi || !aqi.hourly) return null;
+  const now = Date.now(), H = aqi.hourly, rows = [];
+  for (let i = 0; i < H.t.length; i++) { const tm = new Date(H.t[i]).getTime(); if (tm < now - 3600000 || tm > now + 24 * 3600000 || H.aqi[i] == null) continue; rows.push({ tm, h: new Date(H.t[i]).getHours(), v: H.aqi[i] }); }
+  let best = null;
+  for (let i = 0; i + 2 < rows.length; i++) { const w = rows.slice(i, i + 3); if (w.some(x => x.h < 7 || x.h > 20)) continue; const avg = w.reduce((s, x) => s + x.v, 0) / 3; if (!best || avg < best.avg) best = { from: w[0].h, to: (w[2].h + 1) % 24, avg: Math.round(avg), at: w[0].tm }; }
+  return { rows, best };
+}
+function fillAqiSheet() {
+  const n = aqNow(); if (!n) return;
+  const b = aqBand(n.aqi);
+  $("aqiBig").textContent = n.aqi; $("aqiBig").style.background = b[1]; $("aqiBig").style.color = n.aqi > 200 ? "#fff" : "#111";
+  $("aqiCat").textContent = aqEmoji(n.aqi) + " " + t(b[2]);
+  $("aqiPm").textContent = n.pm25 != null ? "PM2.5: " + Math.round(n.pm25) + " µg/m³" : "";
+  $("aqiAdvice").textContent = t(b[2] + "Tip");
+  const W = bestWindow(), ch = $("aqiChart"); ch.innerHTML = "";
+  if (W && W.rows.length) {
+    const max = Math.max(150, ...W.rows.map(r => r.v));
+    W.rows.forEach((r, i) => { const d = document.createElement("div"); d.className = "b" + (W.best && r.tm >= W.best.at && r.tm < W.best.at + 3 * 3600000 ? " best" : "");
+      d.style.height = Math.max(3, Math.round(r.v / max * 88)) + "px"; d.style.background = aqBand(r.v)[1]; d.title = r.h + ":00 · " + Math.round(r.v);
+      if (r.h % 3 === 0) { const s = document.createElement("span"); s.textContent = r.h; d.appendChild(s); } ch.appendChild(d); });
+    $("aqiBest").textContent = W.best ? t("aqBest", { from: W.best.from, to: W.best.to, v: W.best.avg }) : "";
+  } else $("aqiBest").textContent = "";
+  const age = Math.round((Date.now() - aqi.ts) / 60000);
+  $("aqiSrc").innerHTML = (n.src === "station" ? esc(t("aqSrcStation", { s: aqi.station.name || "" })) : esc(t("aqSrcModel"))) + "<br>" + esc(t("aqUpdated", { m: age }));
+}
+$("aqiPill").addEventListener("click", () => { fillAqiSheet(); $("aqiSheet").classList.add("open"); refreshAqi(false); });
+$("aqiClose").addEventListener("click", () => $("aqiSheet").classList.remove("open"));
+$("aqiSheet").addEventListener("click", ev => { if (ev.target === $("aqiSheet")) $("aqiSheet").classList.remove("open"); });
+$("aqiRefresh").addEventListener("click", () => refreshAqi(true));
+paintAqi();
+
 function buildPricesCSV(all) {
   const rows = [["date", "item", "unit", "store", "price", "currency", "price_kgs", "recorded_by"]];
   let list = liveOf("prices").filter(p => px.products[p.product] && !px.products[p.product].del && px.stores[p.store] && !px.stores[p.store].del);
@@ -2895,6 +3061,7 @@ function buildPricesCSV(all) {
    ===================================================================== */
 function renderAll() {
   renderSync();
+  if (cfg && me) setTimeout(() => { autoRateCheck(); refreshAqi(false); }, 0);     // both throttle themselves
   if ($("recent").classList.contains("on")) renderRecent();
   if ($("summary").classList.contains("on")) renderSummary();
   if ($("settings").classList.contains("on")) renderSettings();
@@ -2905,11 +3072,12 @@ renderPad(); renderAmount(); applyLang();
 window.addEventListener("hashchange", nextStep);
 nextStep();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
-setTimeout(() => { if (cfg && me) autoRateCheck(); }, window.__rateDelay || 4000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden && cfg && me) autoRateCheck(); });
+setTimeout(() => { if (cfg && me) { autoRateCheck(); refreshAqi(false); } }, window.__rateDelay || 4000);
+setInterval(() => { if (!document.hidden && cfg && me) refreshAqi(false); }, 10 * 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && cfg && me) { autoRateCheck(); refreshAqi(false); } });
 
 // test hook (no secrets exposed beyond what this phone already stores)
-window.__rz = { haggleInfo: (p, s, q) => haggleInfo(p, s, q), parseSize: s => parseSize(s), autoRateCheck: f => autoRateCheck(f), get shared() { return shared; }, walkRoute: (a, b) => { walkFresh(); return walkRoute(a, b); }, buildPath,  ensureWalk: () => ensureWalk(), syncNow, get entries() { return entries; }, get dirty() { return dirty; }, get px() { return px; }, buildExport, buildCSV, computeSummary, planList };
+window.__rz = { refreshAqi: f => refreshAqi(f), get aqi() { return aqi; }, haggleInfo: (p, s, q) => haggleInfo(p, s, q), parseSize: s => parseSize(s), autoRateCheck: f => autoRateCheck(f), get shared() { return shared; }, walkRoute: (a, b) => { walkFresh(); return walkRoute(a, b); }, buildPath,  ensureWalk: () => ensureWalk(), syncNow, get entries() { return entries; }, get dirty() { return dirty; }, get px() { return px; }, buildExport, buildCSV, computeSummary, planList };
 })();
 </script>
 </body>
