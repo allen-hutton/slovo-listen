@@ -155,6 +155,10 @@
   #pMap.on{display:block}
   #mapBox{position:absolute;inset:0;background:#e9e5dc}
   .mapmsg{position:absolute;left:12px;right:12px;top:12px;z-index:800;background:rgba(18,20,24,.93);color:#fff;padding:12px 14px;border-radius:12px;font-size:14px;line-height:1.35;display:none}
+  .walkbar{position:absolute;left:12px;right:12px;top:12px;z-index:790;background:#2b7cff;color:#fff;padding:10px 12px;border-radius:12px;font-size:15px;font-weight:600;display:none;align-items:center;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+  .walkbar span{flex:1;min-width:0}
+  .walkbar button{background:rgba(255,255,255,.2);border:none;color:#fff;width:34px;height:34px;padding:0;border-radius:17px;flex:0 0 34px}
+  .walkbtn{margin-top:8px}
   .mapbtn{position:absolute;right:12px;bottom:28px;z-index:800;width:50px;height:50px;border-radius:25px;font-size:24px;padding:0;background:#fff;color:#2b7cff;border:none;box-shadow:0 2px 10px rgba(0,0,0,.35)}
   .pinwrap{position:relative;width:44px;height:44px}
   .pin{width:44px;height:44px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.55);background:#3a4150;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:21px;box-sizing:border-box}
@@ -250,6 +254,7 @@
   <div class="pview" id="pMap">
     <div id="mapBox"></div>
     <div id="mapMsg" class="mapmsg"></div>
+    <div id="walkBar" class="walkbar"><span id="walkText"></span><button id="walkClose" aria-label="close">✕</button></div>
     <button id="mapMe" class="mapbtn" aria-label="me">◎</button>
   </div>
   <datalist id="productNames"></datalist>
@@ -585,6 +590,9 @@ const T = {
     noDist:"no distance",
     allCats:"All", catSearchPh:"Search categories", newCat:"New category", create:"Create",
     newCatNote:"Tap the first box and use the emoji keyboard for the icon. Shared with the other phone.", catExists:"That category already exists.",
+    walkHere:"🚶 Walk here", walkFrom:"Walking route from {from}: {km} km, ~{min} min.", minShort:"min",
+    walkDownloading:"Saving walking paths for offline routes (1.6 MB, one time)…", walkNoStart:"Tap 🏠 on the Stores tab at home, or allow location, so the route has a starting point. Tap to close.",
+    walkNoPath:"Couldn't find a walking path — this spot is more than 500 m from any mapped street or path. Tap to close.", walkNeedsNet:"Walking paths download once (1.6 MB). Connect to the internet and try again. Tap to close.",
     pMap:"Map", mapDownloading:"Saving the Bishkek map to this phone for offline use… {p}% (9 MB, one time)",
     mapNeedsNet:"The map downloads once (9 MB). Connect to the internet and open Map again — after that it works offline.",
     homeLabel:"Home", openStore:"Open store", onList:"From your list:", fromYou:"from you", fromHomeShort:"from home",
@@ -636,6 +644,9 @@ const T = {
     noDist:"без расстояния",
     allCats:"Все", catSearchPh:"Поиск категории", newCat:"Новая категория", create:"Создать",
     newCatNote:"Нажмите на первое поле и выберите значок на клавиатуре эмодзи. Видна и на другом телефоне.", catExists:"Такая категория уже есть.",
+    walkHere:"🚶 Пешком сюда", walkFrom:"Пешком от {from}: {km} км, ~{min} мин.", minShort:"мин",
+    walkDownloading:"Сохраняю пешеходные пути для маршрутов без сети (1,6 МБ, один раз)…", walkNoStart:"Нажмите 🏠 на вкладке «Магазины» дома или разрешите геолокацию, чтобы у маршрута была точка старта. Нажмите, чтобы закрыть.",
+    walkNoPath:"Не нашёл пешеходный путь — это место дальше 500 м от улиц и дорожек на карте. Нажмите, чтобы закрыть.", walkNeedsNet:"Пешеходные пути скачиваются один раз (1,6 МБ). Подключитесь к интернету и попробуйте снова. Нажмите, чтобы закрыть.",
     pMap:"Карта", mapDownloading:"Сохраняю карту Бишкека на телефон для работы без сети… {p}% (9 МБ, один раз)",
     mapNeedsNet:"Карта скачивается один раз (9 МБ). Подключитесь к интернету и откройте «Карту» снова — дальше она работает без сети.",
     homeLabel:"Дом", openStore:"Открыть магазин", onList:"Из списка:", fromYou:"от вас", fromHomeShort:"от дома",
@@ -1372,10 +1383,208 @@ function storeSortKey(id) {               // GPS distance from home when we have
   if (home && hasLoc(s)) return km(home, s);
   return storeDist(id) + 1e6;
 }
-function bestRoute(start, ids) {
+/* ---------- walking network: OpenStreetMap streets + footpaths for Bishkek, routed on the phone ---------- */
+const WALK_FILE = "map/bishkek-walk-20261118.bin", WALK_KEY = "walk:bishkek-20261118", WALK_MPM = 75;   // 75 m per minute ≈ 4.5 km/h
+let walkG = null, walkLoading = null;
+function parseWalk(buf) {
+  const dv = new DataView(buf);
+  if (String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3)) !== "RWG1") throw new Error("walk file");
+  const nV = dv.getUint32(4, true), nE = dv.getUint32(8, true), nP = dv.getUint32(12, true);
+  let o = 16;
+  const vx = new Float64Array(nV), vy = new Float64Array(nV);
+  for (let i = 0; i < nV; i++) { vx[i] = dv.getInt32(o, true) / 1e6; vy[i] = dv.getInt32(o + 4, true) / 1e6; o += 8; }
+  const ea = new Uint32Array(nE), eb = new Uint32Array(nE), el = new Float32Array(nE), ep = new Uint32Array(nE), en = new Uint16Array(nE);
+  let pAt = 0;
+  for (let i = 0; i < nE; i++) { ea[i] = dv.getUint32(o, true); eb[i] = dv.getUint32(o + 4, true); el[i] = dv.getFloat32(o + 8, true); en[i] = dv.getUint16(o + 12, true); ep[i] = pAt; pAt += en[i]; o += 14; }
+  const px_ = new Float64Array(nP), py_ = new Float64Array(nP);
+  for (let i = 0; i < nE; i++) {
+    let x = Math.round(vx[ea[i]] * 1e6), y = Math.round(vy[ea[i]] * 1e6);
+    for (let k = 0; k < en[i]; k++) { x += dv.getInt16(o, true); y += dv.getInt16(o + 2, true); o += 4; px_[ep[i] + k] = x / 1e6; py_[ep[i] + k] = y / 1e6; }
+  }
+  // adjacency (CSR)
+  const deg = new Uint32Array(nV + 1);
+  for (let i = 0; i < nE; i++) { deg[ea[i] + 1]++; deg[eb[i] + 1]++; }
+  for (let i = 0; i < nV; i++) deg[i + 1] += deg[i];
+  const adj = new Uint32Array(2 * nE), fill = deg.slice(0, nV);
+  for (let i = 0; i < nE; i++) { adj[fill[ea[i]]++] = i; adj[fill[eb[i]]++] = i; }
+  // local metric projection
+  const lat0 = 42.865 * Math.PI / 180, KX = 111320 * Math.cos(lat0), KY = 110540;
+  // spatial grid of edges (~120 m cells)
+  const CX = 0.0015, CY = 0.0011, grid = new Map();
+  const cell = (x, y) => Math.floor(x / CX) * 100000 + Math.floor(y / CY);
+  const G = { nV, nE, vx, vy, ea, eb, el, ep, en, px: px_, py: py_, deg, adj, KX, KY, CX, CY, grid, cell, dist: new Float64Array(nV).fill(Infinity), prev: new Int32Array(nV).fill(-1), touched: [] };
+  for (let e = 0; e < nE; e++) {
+    const c = edgeCoords(G, e);
+    for (let k = 0; k + 1 < c.length; k++) {
+      const x0 = Math.min(c[k][0], c[k + 1][0]), x1 = Math.max(c[k][0], c[k + 1][0]), y0 = Math.min(c[k][1], c[k + 1][1]), y1 = Math.max(c[k][1], c[k + 1][1]);
+      for (let gx = Math.floor(x0 / CX); gx <= Math.floor(x1 / CX); gx++) for (let gy = Math.floor(y0 / CY); gy <= Math.floor(y1 / CY); gy++) {
+        const key = gx * 100000 + gy; let arr = grid.get(key); if (!arr) grid.set(key, arr = []);
+        if (arr[arr.length - 1] !== e) arr.push(e);
+      }
+    }
+  }
+  return G;
+}
+function edgeCoords(G, e) {                // [[lng,lat], ...] from vertex a to vertex b
+  const out = [[G.vx[G.ea[e]], G.vy[G.ea[e]]]];
+  for (let k = 0; k < G.en[e]; k++) out.push([G.px[G.ep[e] + k], G.py[G.ep[e] + k]]);
+  out.push([G.vx[G.eb[e]], G.vy[G.eb[e]]]);
+  return out;
+}
+function mDist(G, ax, ay, bx, by) { return Math.hypot((ax - bx) * G.KX, (ay - by) * G.KY); }
+function snapWalk(G, lat, lng) {
+  // nearest point on any path, searching outwards up to ~500 m
+  const gx = Math.floor(lng / G.CX), gy = Math.floor(lat / G.CY);
+  let best = null;
+  for (let r = 0; r <= 4; r++) {
+    for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+      const arr = G.grid.get((gx + dx) * 100000 + gy + dy); if (!arr) continue;
+      for (const e of arr) {
+        const c = edgeCoords(G, e); let along = 0;
+        for (let k = 0; k + 1 < c.length; k++) {
+          const ax = (c[k][0] - lng) * G.KX, ay = (c[k][1] - lat) * G.KY, bx = (c[k + 1][0] - lng) * G.KX, by = (c[k + 1][1] - lat) * G.KY;
+          const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy, segL = Math.sqrt(L2);
+          let tt = L2 ? -(ax * vx + ay * vy) / L2 : 0; tt = Math.max(0, Math.min(1, tt));
+          const d = Math.hypot(ax + tt * vx, ay + tt * vy);
+          if (!best || d < best.dist) best = { e, k, t: tt, dist: d, along: along + tt * segL, lng: c[k][0] + tt * (c[k + 1][0] - c[k][0]), lat: c[k][1] + tt * (c[k + 1][1] - c[k][1]) };
+          along += segL;
+        }
+        if (best && best.e === e) best.len = along;
+      }
+    }
+    if (best && best.dist < r * Math.min(G.CX * G.KX, G.CY * G.KY)) break;   // nothing closer can be further out
+  }
+  if (!best || best.dist > 500) return null;
+  if (best.len == null) { const c = edgeCoords(G, best.e); best.len = 0; for (let k = 0; k + 1 < c.length; k++) best.len += mDist(G, c[k][0], c[k][1], c[k + 1][0], c[k + 1][1]); }
+  const scale = G.el[best.e] / (best.len || 1);
+  best.toA = best.along * scale; best.toB = (best.len - best.along) * scale;
+  return best;
+}
+// heap of (key, vertex)
+function Heap() { this.k = []; this.v = []; }
+Heap.prototype.push = function (key, val) {
+  const k = this.k, v = this.v; let i = k.length; k.push(key); v.push(val);
+  while (i > 0) { const p = (i - 1) >> 1; if (k[p] <= key) break; k[i] = k[p]; v[i] = v[p]; i = p; }
+  k[i] = key; v[i] = val;
+};
+Heap.prototype.pop = function () {
+  const k = this.k, v = this.v, topK = k[0], topV = v[0], lk = k.pop(), lv = v.pop(), n = k.length;
+  if (n) { let i = 0; for (;;) { let c = 2 * i + 1; if (c >= n) break; if (c + 1 < n && k[c + 1] < k[c]) c++; if (k[c] >= lk) break; k[i] = k[c]; v[i] = v[c]; i = c; } k[i] = lk; v[i] = lv; }
+  return [topK, topV];
+};
+function walkReset(G) { for (const i of G.touched) { G.dist[i] = Infinity; G.prev[i] = -1; } G.touched.length = 0; }
+function walkSet(G, i, d, pe) { if (G.dist[i] === Infinity) G.touched.push(i); G.dist[i] = d; G.prev[i] = pe; }
+// shortest walk between two snapped points; goal = snap or null (then settle until all `targets` vertices are done)
+function walkSearch(G, s, goal, targets) {
+  walkReset(G);
+  const H = new Heap(), A = G.ea[s.e], B = G.eb[s.e];
+  const gx = goal ? goal.lng : 0, gy = goal ? goal.lat : 0;
+  const hfn = goal ? (u => mDist(G, G.vx[u], G.vy[u], gx, gy)) : (() => 0);
+  walkSet(G, A, s.toA, -1); H.push(s.toA + hfn(A), A);
+  if (s.toB < G.dist[B]) { walkSet(G, B, s.toB, -1); H.push(s.toB + hfn(B), B); }
+  let best = Infinity, end = -1, left = targets ? new Set(targets) : null;
+  if (goal && goal.e === s.e) { best = Math.abs(goal.along - s.along) * (G.el[s.e] / (s.len || 1)); end = -2; }
+  while (H.k.length) {
+    const [f, u] = H.pop(), du = G.dist[u];
+    if (f > du + hfn(u) + 1e-6) continue;          // stale
+    if (goal) {
+      if (f >= best) break;
+      if (u === G.ea[goal.e] && du + goal.toA < best) { best = du + goal.toA; end = u; }
+      if (u === G.eb[goal.e] && du + goal.toB < best) { best = du + goal.toB; end = u; }
+    } else if (left) { left.delete(u); if (!left.size) break; }
+    for (let j = G.deg[u]; j < G.deg[u + 1]; j++) {
+      const e = G.adj[j], w = G.ea[e] === u ? G.eb[e] : G.ea[e], nd = du + G.el[e];
+      if (nd < G.dist[w]) { walkSet(G, w, nd, e); H.push(nd + hfn(w), w); }
+    }
+  }
+  return { best, end };
+}
+function partToward(G, sn, toB) {            // [lng,lat] points from the snapped point to vertex b (toB) or a
+  const c = edgeCoords(G, sn.e), out = [[sn.lng, sn.lat]];
+  if (toB) for (let k = sn.k + 1; k < c.length; k++) out.push(c[k]); else for (let k = sn.k; k >= 0; k--) out.push(c[k]);
+  return out;
+}
+function walkRoute(from, to) {
+  // {m, min, path:[[lat,lng]...]} or null
+  const G = walkG; if (!G) return null;
+  const s = snapWalk(G, from.lat, from.lng), g = snapWalk(G, to.lat, to.lng);
+  if (!s || !g) return null;
+  const r = walkSearch(G, s, g);
+  if (!isFinite(r.best)) return null;
+  let pts;
+  if (r.end === -2) {
+    const c = edgeCoords(G, s.e); pts = [[s.lng, s.lat]];
+    if (g.along >= s.along) { for (let k = s.k + 1; k <= g.k; k++) pts.push(c[k]); } else { for (let k = s.k; k > g.k; k--) pts.push(c[k]); }
+    pts.push([g.lng, g.lat]);
+  } else {
+    const edges = []; let u = r.end;
+    while (G.prev[u] !== -1) { const e = G.prev[u]; edges.push(e); u = G.ea[e] === u ? G.eb[e] : G.ea[e]; }
+    pts = partToward(G, s, u === G.eb[s.e]);
+    let cur = u;
+    for (let i = edges.length - 1; i >= 0; i--) {
+      const e = edges[i], c = edgeCoords(G, e);
+      if (G.ea[e] === cur) { for (let k = 1; k < c.length; k++) pts.push(c[k]); cur = G.eb[e]; }
+      else { for (let k = c.length - 2; k >= 0; k--) pts.push(c[k]); cur = G.ea[e]; }
+    }
+    pts = pts.concat(partToward(G, g, r.end === G.eb[g.e]).reverse());
+  }
+  const m = r.best + s.dist + g.dist;
+  return { m, min: Math.max(1, Math.round(m / WALK_MPM)), path: [[from.lat, from.lng]].concat(pts.map(p => [p[1], p[0]]), [[to.lat, to.lng]]) };
+}
+function walkMatrix(points) {
+  // walking metres between every pair (row = from); falls back to straight-line ×1.3 where a point is off the network
+  const G = walkG, n = points.length, sn = points.map(p => snapWalk(G, p.lat, p.lng));
+  const M = [...Array(n)].map(() => new Array(n).fill(0));
+  for (let i = 0; i < n; i++) {
+    let ok = !!sn[i];
+    if (ok) walkSearch(G, sn[i], null, sn.filter((x, j) => x && j !== i).flatMap(x => [G.ea[x.e], G.eb[x.e]]));
+    for (let j = 0; j < n; j++) {
+      if (i === j) continue;
+      const a = sn[i], b = sn[j];
+      if (!ok || !b) { M[i][j] = km(points[i], points[j]) * 1300; continue; }
+      let d = Math.min(G.dist[G.ea[b.e]] + b.toA, G.dist[G.eb[b.e]] + b.toB);
+      if (a.e === b.e) d = Math.min(d, Math.abs(a.along - b.along) * (G.el[a.e] / (a.len || 1)));
+      M[i][j] = isFinite(d) ? d + a.dist + b.dist : km(points[i], points[j]) * 1300;
+    }
+  }
+  return M;
+}
+async function ensureWalk(showMsg) {
+  if (walkG) return walkG;
+  if (!walkLoading) walkLoading = (async () => {
+    let blob = await idbGet(WALK_KEY);
+    if (!blob) {
+      if (showMsg) mapMsg(t("walkDownloading"));
+      const r = await fetch(WALK_FILE, { cache: "no-store" });
+      if (!r.ok) throw new Error("walk " + r.status);
+      blob = await r.blob(); await idbPut(WALK_KEY, blob);
+      if (showMsg) mapMsg("");
+    }
+    walkG = parseWalk(await blob.arrayBuffer());
+    walkCache = {}; pinSig = "";
+    return walkG;
+  })();
+  try { return await walkLoading; } catch (e) { walkLoading = null; if (showMsg) mapMsg(""); return null; }
+}
+let walkCache = {};
+function walkMatrixCached(points) {
+  if (!walkG) return null;
+  const key = "M" + points.map(p => p.lat.toFixed(5) + "," + p.lng.toFixed(5)).join(";");
+  return walkCache[key] || (walkCache[key] = walkMatrix(points));
+}
+function walkRouteCached(a, b) {
+  if (!walkG) return null;
+  const key = "R" + [a.lat, a.lng, b.lat, b.lng].map(x => x.toFixed(5)).join(",");
+  if (!(key in walkCache)) walkCache[key] = walkRoute(a, b);
+  return walkCache[key];
+}
+
+function bestRoute(start, ids, M) {
   // fewest km visiting every store once, starting at `start` (no return leg). Exact up to 8 stops, greedy beyond.
   const pts = ids.map(id => px.stores[id]);
-  const legLen = order => { let d = 0, cur = start; for (const i of order) { d += km(cur, pts[i]); cur = pts[i]; } return d; };
+  const leg = (a, b) => M ? M[a + 1][b + 1] / 1000 : km(a < 0 ? start : pts[a], pts[b]);       // km
+  const legLen = order => { let d = 0, cur = -1; for (const i of order) { d += leg(cur, i); cur = i; } return d; };
   let idx = ids.map((_, i) => i);
   if (ids.length <= 8) {
     let best = idx.slice(), bestD = legLen(idx);
@@ -1386,8 +1595,8 @@ function bestRoute(start, ids) {
     perm(idx, 0);
     return { order: best.map(i => ids[i]), km: bestD };
   }
-  const left = new Set(idx), out = []; let cur = start, total = 0;
-  while (left.size) { let bi = -1, bd = Infinity; for (const i of left) { const d = km(cur, pts[i]); if (d < bd) { bd = d; bi = i; } } out.push(ids[bi]); total += bd; cur = pts[bi]; left.delete(bi); }
+  const left = new Set(idx), out = []; let cur = -1, total = 0;
+  while (left.size) { let bi = -1, bd = Infinity; for (const i of left) { const d = leg(cur, i); if (d < bd) { bd = d; bi = i; } } out.push(ids[bi]); total += bd; cur = bi; left.delete(bi); }
   return { order: out, km: total };
 }
 
@@ -1735,8 +1944,9 @@ function planList() {
   const start = routeStart || (home ? Object.assign({ src: "home" }, home) : null);
   const gps = order.filter(id => hasLoc(px.stores[id]));
   if (start && gps.length) {
-    route = bestRoute(start, gps); route.src = start.src || "home"; route.legs = {};
-    let cur = start; for (const id of route.order) { route.legs[id] = km(cur, px.stores[id]); cur = px.stores[id]; }
+    const M = walkMatrixCached([start].concat(gps.map(id => px.stores[id])));
+    route = bestRoute(start, gps, M); route.src = start.src || "home"; route.legs = {}; route.walk = !!M; route.start = start;
+    let cur = -1; for (const id of route.order) { const j = gps.indexOf(id); route.legs[id] = M ? M[cur + 1][j + 1] / 1000 : km(cur < 0 ? start : px.stores[gps[cur]], px.stores[id]); cur = j; }
     order = route.order.concat(order.filter(id => !hasLoc(px.stores[id])));
     route.partial = gps.length < Object.keys(groups).length;
   }
@@ -1747,7 +1957,10 @@ function planList() {
 function renderList() {
   const box = $("listPlan"); box.innerHTML = "";
   const plan = planList();
-  $("routeInfo").textContent = plan.route ? t("routeFrom", { from: plan.route.src === "here" ? t("fromHere") : t("fromHome"), km: plan.route.km.toFixed(1) }) + (plan.route.partial ? " " + t("routeNoGps") : "") : "";
+  const rfrom = plan.route ? (plan.route.src === "here" ? t("fromHere") : t("fromHome")) : "";
+  $("routeInfo").textContent = !plan.route ? "" : (plan.route.walk ? t("walkFrom", { from: rfrom, km: plan.route.km.toFixed(1), min: Math.round(plan.route.km * 1000 / WALK_MPM) })
+    : t("routeFrom", { from: rfrom, km: plan.route.km.toFixed(1) })) + (plan.route.partial ? " " + t("routeNoGps") : "");
+  if (!walkG && plan.route) ensureWalk().then(g => { if (g && $("prices").classList.contains("on") && pview === "pList") renderList(); });
   if (!plan.order.length && !plan.none.length) { box.innerHTML = '<p class="note">' + t("listEmpty") + "</p>"; return; }
   const line = x => {
     const row = document.createElement("div"); row.className = "litem" + (x.l.checked ? " done" : "");
@@ -1857,6 +2070,7 @@ async function openMap() {
       window.__map = map;
     }
     setTimeout(() => map.invalidateSize(), 0);
+    if (!walkG) ensureWalk(true).then(g => { if (g) drawPins(true); });
     drawPins();
     startWatch();
   } finally { mapOpening = false; }
@@ -1881,9 +2095,11 @@ function storePopup(s, items) {
       const b = document.createElement("b"); b.textContent = fmtK(priceKGS(x.c) * (x.l.qty || 1)); li.append(a, b); ul.appendChild(li); });
     d.appendChild(ul);
   }
-  const btn = document.createElement("button"); btn.className = "popbtn"; btn.textContent = t("openStore");
+  const wb = document.createElement("button"); wb.className = "popbtn walkbtn"; wb.textContent = t("walkHere");
+  wb.addEventListener("click", () => { map.closePopup(); walkTo(s); });
+  const btn = document.createElement("button"); btn.className = "popbtn"; btn.style.background = "#5b6474"; btn.textContent = t("openStore");
   btn.addEventListener("click", () => { map.closePopup(); openStore(s.id); });
-  d.appendChild(btn);
+  d.append(wb, btn);
   return d;
 }
 function drawPins(force) {
@@ -1905,14 +2121,36 @@ function drawPins(force) {
   }
   // dashed line along the shopping route
   const start = routeStart || (home ? home : null);
-  const pts = (start ? [[start.lat, start.lng]] : []).concat(plan.order.filter(id => hasLoc(px.stores[id])).map(id => [px.stores[id].lat, px.stores[id].lng]));
-  if (pts.length > 1) L.polyline(pts, { color: "#2b7cff", weight: 4, opacity: .75, dashArray: "2 9", lineCap: "round", interactive: false }).addTo(pinLayer);
+  const stops = (start ? [start] : []).concat(plan.order.filter(id => hasLoc(px.stores[id])).map(id => px.stores[id]));
+  for (let i = 0; i + 1 < stops.length; i++) {
+    const w = walkRouteCached(stops[i], stops[i + 1]);
+    L.polyline(w ? w.path : [[stops[i].lat, stops[i].lng], [stops[i + 1].lat, stops[i + 1].lng]],
+      { color: "#2b7cff", weight: 4, opacity: .75, dashArray: "2 9", lineCap: "round", interactive: false, className: w ? "walkleg" : "straightleg" }).addTo(pinLayer);
+  }
   if (!mapFitted) {
     const all = stores.map(s => [s.lat, s.lng]).concat(home ? [[home.lat, home.lng]] : []);
     if (all.length > 1) { map.fitBounds(L.latLngBounds(all).pad(0.25), { maxZoom: 16 }); mapFitted = true; }
     else if (all.length === 1) { map.setView(all[0], 16); mapFitted = true; }
   }
   if (!stores.length && $("mapMsg").style.display !== "block") mapMsg(t("mapNoPins"), true);
+}
+let walkLayer = null;
+function clearWalk() { if (walkLayer) { walkLayer.remove(); walkLayer = null; } $("walkBar").style.display = "none"; }
+async function walkTo(s) {
+  clearWalk();
+  const inCity = p => p && p.lat > MAP_BOUNDS[0][0] && p.lat < MAP_BOUNDS[1][0] && p.lng > MAP_BOUNDS[0][1] && p.lng < MAP_BOUNDS[1][1];
+  const from = inCity(lastMe) ? Object.assign({ src: "here" }, lastMe) : home ? Object.assign({ src: "home" }, home) : null;
+  if (!from) { mapMsg(t("walkNoStart"), true); return; }
+  const g = await ensureWalk(true);
+  const w = g ? walkRoute(from, s) : null;
+  if (!w) { mapMsg(t(g ? "walkNoPath" : "walkNeedsNet"), true); return; }
+  walkLayer = L.layerGroup([
+    L.polyline(w.path, { color: "#fff", weight: 9, opacity: .9, interactive: false }),
+    L.polyline(w.path, { color: "#2b7cff", weight: 5, opacity: 1, interactive: false, className: "walkline" })
+  ]).addTo(map);
+  map.fitBounds(L.latLngBounds(w.path).pad(0.15), { maxZoom: 17 });
+  $("walkText").textContent = "🚶 " + fmtKm(w.m / 1000) + " · ~" + w.min + " " + t("minShort") + " — " + (from.src === "here" ? t("fromYou") : t("fromHomeShort")) + " → " + s.name;
+  $("walkBar").style.display = "flex";
 }
 function startWatch() {
   if (watchId != null || !navigator.geolocation || !map) return;
@@ -1926,6 +2164,7 @@ function startWatch() {
   }, () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
 }
 function stopWatch() { if (watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(watchId); watchId = null; }
+$("walkClose").addEventListener("click", clearWalk);
 $("mapMe").addEventListener("click", () => {
   if (lastMe && map) map.setView([lastMe.lat, lastMe.lng], Math.max(map.getZoom(), 16));
   else { startWatch(); mapMsg(t("gettingLoc")); setTimeout(() => { if ($("mapMsg").textContent === t("gettingLoc")) mapMsg(""); if (lastMe && map) map.setView([lastMe.lat, lastMe.lng], 16); }, 4000); }
@@ -1959,7 +2198,7 @@ nextStep();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 
 // test hook (no secrets exposed beyond what this phone already stores)
-window.__rz = { syncNow, get entries() { return entries; }, get dirty() { return dirty; }, get px() { return px; }, buildExport, buildCSV, computeSummary, planList };
+window.__rz = { walkRoute: (a, b) => walkRoute(a, b), ensureWalk: () => ensureWalk(), syncNow, get entries() { return entries; }, get dirty() { return dirty; }, get px() { return px; }, buildExport, buildCSV, computeSummary, planList };
 })();
 </script>
 </body>
