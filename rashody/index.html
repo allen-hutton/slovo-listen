@@ -159,6 +159,18 @@
   .walkbar span{flex:1;min-width:0}
   .walkbar button{background:rgba(255,255,255,.2);border:none;color:#fff;width:34px;height:34px;padding:0;border-radius:17px;flex:0 0 34px}
   .walkbtn{margin-top:8px}
+  #pMap .recbtn{bottom:88px;color:#e0412f;font-size:26px;line-height:50px}
+  .modebar{position:absolute;left:12px;right:12px;bottom:24px;z-index:810;background:rgba(18,20,24,.95);color:#fff;border-radius:14px;padding:10px 12px;display:none;box-shadow:0 2px 12px rgba(0,0,0,.45)}
+  .modebar #modeText{font-size:14px;line-height:1.35;margin-bottom:8px}
+  .modebar .mbtns{display:flex;gap:8px}
+  .modebar .mbtns button{flex:1;height:46px;font-size:15px;font-weight:600;border-radius:10px}
+  .modebar .mbtns .jbtn{background:#f0a531;border-color:#f0a531;color:#111;flex:1.4}
+  .modebar .mbtns .stop{background:#e0412f;border-color:#e0412f;color:#fff}
+  .modebar .mbtns .ok{background:#2b7cff;border-color:#2b7cff;color:#fff}
+  .recdot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#e0412f;margin-right:6px;animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .vtx{width:22px;height:22px;border-radius:50%;background:#f0a531;border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5);box-sizing:border-box}
+  .vtx.jn{background:#e0412f}
   .mapbtn{position:absolute;right:12px;bottom:28px;z-index:800;width:50px;height:50px;border-radius:25px;font-size:24px;padding:0;background:#fff;color:#2b7cff;border:none;box-shadow:0 2px 10px rgba(0,0,0,.35)}
   .pinwrap{position:relative;width:44px;height:44px}
   .pin{width:44px;height:44px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.55);background:#3a4150;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:21px;box-sizing:border-box}
@@ -256,6 +268,8 @@
     <div id="mapMsg" class="mapmsg"></div>
     <div id="walkBar" class="walkbar"><span id="walkText"></span><button id="walkClose" aria-label="close">✕</button></div>
     <button id="mapMe" class="mapbtn" aria-label="me">◎</button>
+    <button id="recBtn" class="mapbtn recbtn" aria-label="record">●</button>
+    <div id="modeBar" class="modebar"><div id="modeText"></div><div class="mbtns" id="modeBtns"></div></div>
   </div>
   <datalist id="productNames"></datalist>
 </section>
@@ -593,6 +607,11 @@ const T = {
     walkHere:"🚶 Walk here", walkFrom:"Walking route from {from}: {km} km, ~{min} min.", minShort:"min",
     walkDownloading:"Saving walking paths for offline routes (1.6 MB, one time)…", walkNoStart:"Tap 🏠 on the Stores tab at home, or allow location, so the route has a starting point. Tap to close.",
     walkNoPath:"Couldn't find a walking path — this spot is more than 500 m from any mapped street or path. Tap to close.", walkNeedsNet:"Walking paths download once (1.6 MB). Connect to the internet and try again. Tap to close.",
+    holdStill:"📍 Hold still… {s}", movePin:"✥ Move pin", movePinHelp:"Drag the pin to the exact spot, then tap Done.", done:"Done", cancel2:"Cancel",
+    recHelp:"Recording. Walk the path. At every junction or turn, stop and tap 📍 Junction, then stand still.", recStats:"{m} m · junctions: {j} · GPS ±{acc} m",
+    junction:"📍 Junction", stopSave:"■ Save", discard:"Discard", pathSaved:"Path saved — walking routes use it now.", pathTooShort:"Too short to save — walk at least 15 m.",
+    recWeak:"GPS is weak here (±{acc} m) — points this rough are skipped.", pathPop:"Your path · {m} m · {date} · {who}", editPts:"✎ Edit points", delPath:"Delete path",
+    editHelp:"Drag points to where the path really is, then tap Done. Red = junction.", pathDeleted:"Path deleted.", keepAwake:"Keep the screen on while recording.",
     pMap:"Map", mapDownloading:"Saving the Bishkek map to this phone for offline use… {p}% (9 MB, one time)",
     mapNeedsNet:"The map downloads once (9 MB). Connect to the internet and open Map again — after that it works offline.",
     homeLabel:"Home", openStore:"Open store", onList:"From your list:", fromYou:"from you", fromHomeShort:"from home",
@@ -647,6 +666,11 @@ const T = {
     walkHere:"🚶 Пешком сюда", walkFrom:"Пешком от {from}: {km} км, ~{min} мин.", minShort:"мин",
     walkDownloading:"Сохраняю пешеходные пути для маршрутов без сети (1,6 МБ, один раз)…", walkNoStart:"Нажмите 🏠 на вкладке «Магазины» дома или разрешите геолокацию, чтобы у маршрута была точка старта. Нажмите, чтобы закрыть.",
     walkNoPath:"Не нашёл пешеходный путь — это место дальше 500 м от улиц и дорожек на карте. Нажмите, чтобы закрыть.", walkNeedsNet:"Пешеходные пути скачиваются один раз (1,6 МБ). Подключитесь к интернету и попробуйте снова. Нажмите, чтобы закрыть.",
+    holdStill:"📍 Не двигайтесь… {s}", movePin:"✥ Передвинуть", movePinHelp:"Перетащите булавку на точное место и нажмите «Готово».", done:"Готово", cancel2:"Отмена",
+    recHelp:"Запись. Идите по пути. На каждом перекрёстке или повороте остановитесь, нажмите 📍 Перекрёсток и постойте.", recStats:"{m} м · перекрёстков: {j} · GPS ±{acc} м",
+    junction:"📍 Перекрёсток", stopSave:"■ Сохранить", discard:"Удалить", pathSaved:"Путь сохранён — маршруты уже его используют.", pathTooShort:"Слишком коротко — пройдите хотя бы 15 м.",
+    recWeak:"Слабый GPS (±{acc} м) — такие неточные точки пропускаются.", pathPop:"Ваш путь · {m} м · {date} · {who}", editPts:"✎ Править точки", delPath:"Удалить путь",
+    editHelp:"Перетащите точки туда, где путь на самом деле, и нажмите «Готово». Красные = перекрёстки.", pathDeleted:"Путь удалён.", keepAwake:"Не выключайте экран во время записи.",
     pMap:"Карта", mapDownloading:"Сохраняю карту Бишкека на телефон для работы без сети… {p}% (9 МБ, один раз)",
     mapNeedsNet:"Карта скачивается один раз (9 МБ). Подключитесь к интернету и откройте «Карту» снова — дальше она работает без сети.",
     homeLabel:"Дом", openStore:"Открыть магазин", onList:"Из списка:", fromYou:"от вас", fromHomeShort:"от дома",
@@ -673,8 +697,8 @@ let files   = LS.get("files", {});      // person -> { sha, etag }
 let shared  = LS.get("shared", { rate: DEFAULT_RATE, upd: 0, by: "" });   // shared settings (rate)
 let lastSync = LS.get("lastSync", 0), syncError = "";
 // prices: stores, products, price observations (history), shopping list — same merge rules as entries
-let px = LS.get("px", { stores: {}, products: {}, prices: {}, list: {}, cats: {} });
-["stores", "products", "prices", "list", "cats"].forEach(k => { if (!px[k]) px[k] = {}; });
+let px = LS.get("px", { stores: {}, products: {}, prices: {}, list: {}, cats: {}, paths: {} });
+["stores", "products", "prices", "list", "cats", "paths"].forEach(k => { if (!px[k]) px[k] = {}; });
 let photoQueue = LS.get("photoQueue", []);      // photo ids waiting to upload
 
 function persist() {
@@ -1199,7 +1223,7 @@ function mergeDoc(doc) {
   }
   if (doc.shared && (doc.shared.upd || 0) > (shared.upd || 0)) { shared = doc.shared; changed = true; }
   const dp = doc.px || {};
-  for (const k of ["stores", "products", "prices", "list", "cats"]) {
+  for (const k of ["stores", "products", "prices", "list", "cats", "paths"]) {
     for (const r of (dp[k] || [])) {
       if (!r || !r.id) continue;
       if (newer(r, px[k][r.id]) && JSON.stringify(r) !== JSON.stringify(px[k][r.id])) { px[k][r.id] = r; changed = true; }
@@ -1223,7 +1247,7 @@ function myDoc() {
   const mine = Object.values(entries).filter(e => e.editor === me).sort((a, b) => a.ts - b.ts);
   const mineOf = k => Object.values(px[k]).filter(r => r.editor === me);
   return { v: 2, person: me, updated: Date.now(), shared: shared.by === me ? shared : undefined, entries: mine,
-    px: { stores: mineOf("stores"), products: mineOf("products"), prices: mineOf("prices"), list: mineOf("list"), cats: mineOf("cats") } };
+    px: { stores: mineOf("stores"), products: mineOf("products"), prices: mineOf("prices"), list: mineOf("list"), cats: mineOf("cats"), paths: mineOf("paths") } };
 }
 async function push() {
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -1371,6 +1395,27 @@ function getPos(maxAge) {
       rej, { enableHighAccuracy: true, timeout: 15000, maximumAge: maxAge || 0 });
   });
 }
+// stand still: average ~8 s of GPS readings, trusting the sharper ones more (weight 1/accuracy²)
+const AVG_SEC = () => window.__avgSec || 8;
+function avgPos(onTick, secs) {
+  secs = secs || AVG_SEC();
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej(new Error("nogeo"));
+    const got = [], t0 = Date.now();
+    const id = navigator.geolocation.watchPosition(p => got.push({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy || 50 }), () => {}, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+    const tick = setInterval(() => {
+      const el = (Date.now() - t0) / 1000, left = Math.max(0, Math.ceil(secs - el));
+      if (onTick) onTick(left, got.length);
+      if ((el >= secs && got.length) || el > secs + 20) {
+        clearInterval(tick); navigator.geolocation.clearWatch(id);
+        if (!got.length) return rej(new Error("nofix"));
+        const bestAcc = Math.min(...got.map(g => g.acc)), use = got.filter(g => g.acc <= Math.max(15, bestAcc * 2));
+        let W = 0, la = 0, ln = 0; for (const g of use) { const w = 1 / (g.acc * g.acc); W += w; la += g.lat * w; ln += g.lng * w; }
+        res({ lat: la / W, lng: ln / W, acc: Math.round(Math.max(3, bestAcc / Math.sqrt(use.length) * 1.5)), n: use.length });
+      }
+    }, 250);
+  });
+}
 function km(a, b) {
   const R = 6371, r = x => x * Math.PI / 180, dLa = r(b.lat - a.lat), dLo = r(b.lng - a.lng);
   const s = Math.sin(dLa / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLo / 2) ** 2;
@@ -1386,6 +1431,13 @@ function storeSortKey(id) {               // GPS distance from home when we have
 /* ---------- walking network: OpenStreetMap streets + footpaths for Bishkek, routed on the phone ---------- */
 const WALK_FILE = "map/bishkek-walk-20261118.bin", WALK_KEY = "walk:bishkek-20261118", WALK_MPM = 75;   // 75 m per minute ≈ 4.5 km/h
 let walkG = null, walkLoading = null;
+// base graph lives in typed arrays; your recorded paths are added on top in G.X (rebuilt whenever they change)
+const EA = (G, e) => e < G.nE ? G.ea[e] : G.X.ea[e - G.nE];
+const EB = (G, e) => e < G.nE ? G.eb[e] : G.X.eb[e - G.nE];
+const EL = (G, e) => e < G.nE ? G.el[e] : G.X.el[e - G.nE];
+const VX = (G, u) => u < G.nV ? G.vx[u] : G.X.vx[u - G.nV];
+const VY = (G, u) => u < G.nV ? G.vy[u] : G.X.vy[u - G.nV];
+function emptyX() { return { vx: [], vy: [], ea: [], eb: [], el: [], coords: [], adj: new Map(), learned: [] }; }
 function parseWalk(buf) {
   const dv = new DataView(buf);
   if (String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3)) !== "RWG1") throw new Error("walk file");
@@ -1401,18 +1453,15 @@ function parseWalk(buf) {
     let x = Math.round(vx[ea[i]] * 1e6), y = Math.round(vy[ea[i]] * 1e6);
     for (let k = 0; k < en[i]; k++) { x += dv.getInt16(o, true); y += dv.getInt16(o + 2, true); o += 4; px_[ep[i] + k] = x / 1e6; py_[ep[i] + k] = y / 1e6; }
   }
-  // adjacency (CSR)
   const deg = new Uint32Array(nV + 1);
   for (let i = 0; i < nE; i++) { deg[ea[i] + 1]++; deg[eb[i] + 1]++; }
   for (let i = 0; i < nV; i++) deg[i + 1] += deg[i];
   const adj = new Uint32Array(2 * nE), fill = deg.slice(0, nV);
   for (let i = 0; i < nE; i++) { adj[fill[ea[i]]++] = i; adj[fill[eb[i]]++] = i; }
-  // local metric projection
   const lat0 = 42.865 * Math.PI / 180, KX = 111320 * Math.cos(lat0), KY = 110540;
-  // spatial grid of edges (~120 m cells)
   const CX = 0.0015, CY = 0.0011, grid = new Map();
-  const cell = (x, y) => Math.floor(x / CX) * 100000 + Math.floor(y / CY);
-  const G = { nV, nE, vx, vy, ea, eb, el, ep, en, px: px_, py: py_, deg, adj, KX, KY, CX, CY, grid, cell, dist: new Float64Array(nV).fill(Infinity), prev: new Int32Array(nV).fill(-1), touched: [] };
+  const G = { nV, nE, vx, vy, ea, eb, el, ep, en, px: px_, py: py_, deg, adj, KX, KY, CX, CY, grid, X: emptyX(),
+    dist: new Float64Array(nV).fill(Infinity), prev: new Int32Array(nV).fill(-1), touched: [] };
   for (let e = 0; e < nE; e++) {
     const c = edgeCoords(G, e);
     for (let k = 0; k + 1 < c.length; k++) {
@@ -1426,42 +1475,43 @@ function parseWalk(buf) {
   return G;
 }
 function edgeCoords(G, e) {                // [[lng,lat], ...] from vertex a to vertex b
+  if (e >= G.nE) return G.X.coords[e - G.nE];
   const out = [[G.vx[G.ea[e]], G.vy[G.ea[e]]]];
   for (let k = 0; k < G.en[e]; k++) out.push([G.px[G.ep[e] + k], G.py[G.ep[e] + k]]);
   out.push([G.vx[G.eb[e]], G.vy[G.eb[e]]]);
   return out;
 }
 function mDist(G, ax, ay, bx, by) { return Math.hypot((ax - bx) * G.KX, (ay - by) * G.KY); }
-function snapWalk(G, lat, lng) {
-  // nearest point on any path, searching outwards up to ~500 m
-  const gx = Math.floor(lng / G.CX), gy = Math.floor(lat / G.CY);
+function snapWalk(G, lat, lng, maxD, baseOnly) {
+  // nearest point on any path (streets + your recorded paths), searching outwards
+  maxD = maxD || 500;
   let best = null;
-  for (let r = 0; r <= 4; r++) {
+  const scan = e => {
+    const c = edgeCoords(G, e); let along = 0, mine = null;
+    for (let k = 0; k + 1 < c.length; k++) {
+      const ax = (c[k][0] - lng) * G.KX, ay = (c[k][1] - lat) * G.KY, bx = (c[k + 1][0] - lng) * G.KX, by = (c[k + 1][1] - lat) * G.KY;
+      const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy, segL = Math.sqrt(L2);
+      let tt = L2 ? -(ax * vx + ay * vy) / L2 : 0; tt = Math.max(0, Math.min(1, tt));
+      const d = Math.hypot(ax + tt * vx, ay + tt * vy);
+      if (!best || d < best.dist) { best = mine = { e, k, t: tt, dist: d, along: along + tt * segL, lng: c[k][0] + tt * (c[k + 1][0] - c[k][0]), lat: c[k][1] + tt * (c[k + 1][1] - c[k][1]) }; }
+      along += segL;
+    }
+    if (mine) mine.len = along;
+  };
+  const gx = Math.floor(lng / G.CX), gy = Math.floor(lat / G.CY), cellM = Math.min(G.CX * G.KX, G.CY * G.KY);
+  for (let r = 0; r <= Math.ceil(maxD / cellM) + 1; r++) {
     for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
       if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-      const arr = G.grid.get((gx + dx) * 100000 + gy + dy); if (!arr) continue;
-      for (const e of arr) {
-        const c = edgeCoords(G, e); let along = 0;
-        for (let k = 0; k + 1 < c.length; k++) {
-          const ax = (c[k][0] - lng) * G.KX, ay = (c[k][1] - lat) * G.KY, bx = (c[k + 1][0] - lng) * G.KX, by = (c[k + 1][1] - lat) * G.KY;
-          const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy, segL = Math.sqrt(L2);
-          let tt = L2 ? -(ax * vx + ay * vy) / L2 : 0; tt = Math.max(0, Math.min(1, tt));
-          const d = Math.hypot(ax + tt * vx, ay + tt * vy);
-          if (!best || d < best.dist) best = { e, k, t: tt, dist: d, along: along + tt * segL, lng: c[k][0] + tt * (c[k + 1][0] - c[k][0]), lat: c[k][1] + tt * (c[k + 1][1] - c[k][1]) };
-          along += segL;
-        }
-        if (best && best.e === e) best.len = along;
-      }
+      const arr = G.grid.get((gx + dx) * 100000 + gy + dy); if (arr) for (const e of arr) scan(e);
     }
-    if (best && best.dist < r * Math.min(G.CX * G.KX, G.CY * G.KY)) break;   // nothing closer can be further out
+    if (best && best.dist < r * cellM) break;
   }
-  if (!best || best.dist > 500) return null;
-  if (best.len == null) { const c = edgeCoords(G, best.e); best.len = 0; for (let k = 0; k + 1 < c.length; k++) best.len += mDist(G, c[k][0], c[k][1], c[k + 1][0], c[k + 1][1]); }
-  const scale = G.el[best.e] / (best.len || 1);
+  if (!baseOnly) for (let i = 0; i < G.X.ea.length; i++) scan(G.nE + i);
+  if (!best || best.dist > maxD) return null;
+  const scale = EL(G, best.e) / (best.len || 1);
   best.toA = best.along * scale; best.toB = (best.len - best.along) * scale;
   return best;
 }
-// heap of (key, vertex)
 function Heap() { this.k = []; this.v = []; }
 Heap.prototype.push = function (key, val) {
   const k = this.k, v = this.v; let i = k.length; k.push(key); v.push(val);
@@ -1475,38 +1525,36 @@ Heap.prototype.pop = function () {
 };
 function walkReset(G) { for (const i of G.touched) { G.dist[i] = Infinity; G.prev[i] = -1; } G.touched.length = 0; }
 function walkSet(G, i, d, pe) { if (G.dist[i] === Infinity) G.touched.push(i); G.dist[i] = d; G.prev[i] = pe; }
-// shortest walk between two snapped points; goal = snap or null (then settle until all `targets` vertices are done)
 function walkSearch(G, s, goal, targets) {
   walkReset(G);
-  const H = new Heap(), A = G.ea[s.e], B = G.eb[s.e];
+  const H = new Heap(), A = EA(G, s.e), B = EB(G, s.e);
   const gx = goal ? goal.lng : 0, gy = goal ? goal.lat : 0;
-  const hfn = goal ? (u => mDist(G, G.vx[u], G.vy[u], gx, gy)) : (() => 0);
+  const hfn = goal ? (u => mDist(G, VX(G, u), VY(G, u), gx, gy)) : (() => 0);
   walkSet(G, A, s.toA, -1); H.push(s.toA + hfn(A), A);
   if (s.toB < G.dist[B]) { walkSet(G, B, s.toB, -1); H.push(s.toB + hfn(B), B); }
   let best = Infinity, end = -1, left = targets ? new Set(targets) : null;
-  if (goal && goal.e === s.e) { best = Math.abs(goal.along - s.along) * (G.el[s.e] / (s.len || 1)); end = -2; }
+  const gA = goal ? EA(G, goal.e) : -1, gB = goal ? EB(G, goal.e) : -1;
+  if (goal && goal.e === s.e) { best = Math.abs(goal.along - s.along) * (EL(G, s.e) / (s.len || 1)); end = -2; }
+  const relax = (u, du, e) => { const w = EA(G, e) === u ? EB(G, e) : EA(G, e), nd = du + EL(G, e); if (nd < G.dist[w]) { walkSet(G, w, nd, e); H.push(nd + hfn(w), w); } };
   while (H.k.length) {
     const [f, u] = H.pop(), du = G.dist[u];
-    if (f > du + hfn(u) + 1e-6) continue;          // stale
+    if (f > du + hfn(u) + 1e-6) continue;
     if (goal) {
       if (f >= best) break;
-      if (u === G.ea[goal.e] && du + goal.toA < best) { best = du + goal.toA; end = u; }
-      if (u === G.eb[goal.e] && du + goal.toB < best) { best = du + goal.toB; end = u; }
+      if (u === gA && du + goal.toA < best) { best = du + goal.toA; end = u; }
+      if (u === gB && du + goal.toB < best) { best = du + goal.toB; end = u; }
     } else if (left) { left.delete(u); if (!left.size) break; }
-    for (let j = G.deg[u]; j < G.deg[u + 1]; j++) {
-      const e = G.adj[j], w = G.ea[e] === u ? G.eb[e] : G.ea[e], nd = du + G.el[e];
-      if (nd < G.dist[w]) { walkSet(G, w, nd, e); H.push(nd + hfn(w), w); }
-    }
+    if (u < G.nV) for (let j = G.deg[u]; j < G.deg[u + 1]; j++) relax(u, du, G.adj[j]);
+    const xs = G.X.adj.get(u); if (xs) for (const e of xs) relax(u, du, e);
   }
   return { best, end };
 }
-function partToward(G, sn, toB) {            // [lng,lat] points from the snapped point to vertex b (toB) or a
+function partToward(G, sn, toB) {
   const c = edgeCoords(G, sn.e), out = [[sn.lng, sn.lat]];
   if (toB) for (let k = sn.k + 1; k < c.length; k++) out.push(c[k]); else for (let k = sn.k; k >= 0; k--) out.push(c[k]);
   return out;
 }
 function walkRoute(from, to) {
-  // {m, min, path:[[lat,lng]...]} or null
   const G = walkG; if (!G) return null;
   const s = snapWalk(G, from.lat, from.lng), g = snapWalk(G, to.lat, to.lng);
   if (!s || !g) return null;
@@ -1519,37 +1567,88 @@ function walkRoute(from, to) {
     pts.push([g.lng, g.lat]);
   } else {
     const edges = []; let u = r.end;
-    while (G.prev[u] !== -1) { const e = G.prev[u]; edges.push(e); u = G.ea[e] === u ? G.eb[e] : G.ea[e]; }
-    pts = partToward(G, s, u === G.eb[s.e]);
+    while (G.prev[u] !== -1) { const e = G.prev[u]; edges.push(e); u = EA(G, e) === u ? EB(G, e) : EA(G, e); }
+    pts = partToward(G, s, u === EB(G, s.e));
     let cur = u;
     for (let i = edges.length - 1; i >= 0; i--) {
       const e = edges[i], c = edgeCoords(G, e);
-      if (G.ea[e] === cur) { for (let k = 1; k < c.length; k++) pts.push(c[k]); cur = G.eb[e]; }
-      else { for (let k = c.length - 2; k >= 0; k--) pts.push(c[k]); cur = G.ea[e]; }
+      if (EA(G, e) === cur) { for (let k = 1; k < c.length; k++) pts.push(c[k]); cur = EB(G, e); }
+      else { for (let k = c.length - 2; k >= 0; k--) pts.push(c[k]); cur = EA(G, e); }
     }
-    pts = pts.concat(partToward(G, g, r.end === G.eb[g.e]).reverse());
+    pts = pts.concat(partToward(G, g, r.end === EB(G, g.e)).reverse());
   }
   const m = r.best + s.dist + g.dist;
   return { m, min: Math.max(1, Math.round(m / WALK_MPM)), path: [[from.lat, from.lng]].concat(pts.map(p => [p[1], p[0]]), [[to.lat, to.lng]]) };
 }
 function walkMatrix(points) {
-  // walking metres between every pair (row = from); falls back to straight-line ×1.3 where a point is off the network
   const G = walkG, n = points.length, sn = points.map(p => snapWalk(G, p.lat, p.lng));
   const M = [...Array(n)].map(() => new Array(n).fill(0));
   for (let i = 0; i < n; i++) {
-    let ok = !!sn[i];
-    if (ok) walkSearch(G, sn[i], null, sn.filter((x, j) => x && j !== i).flatMap(x => [G.ea[x.e], G.eb[x.e]]));
+    const ok = !!sn[i];
+    if (ok) walkSearch(G, sn[i], null, sn.filter((x, j) => x && j !== i).flatMap(x => [EA(G, x.e), EB(G, x.e)]));
     for (let j = 0; j < n; j++) {
       if (i === j) continue;
       const a = sn[i], b = sn[j];
       if (!ok || !b) { M[i][j] = km(points[i], points[j]) * 1300; continue; }
-      let d = Math.min(G.dist[G.ea[b.e]] + b.toA, G.dist[G.eb[b.e]] + b.toB);
-      if (a.e === b.e) d = Math.min(d, Math.abs(a.along - b.along) * (G.el[a.e] / (a.len || 1)));
+      let d = Math.min(G.dist[EA(G, b.e)] + b.toA, G.dist[EB(G, b.e)] + b.toB);
+      if (a.e === b.e) d = Math.min(d, Math.abs(a.along - b.along) * (EL(G, a.e) / (a.len || 1)));
       M[i][j] = isFinite(d) ? d + a.dist + b.dist : km(points[i], points[j]) * 1300;
     }
   }
   return M;
 }
+/* your recorded paths → extra walkable edges. Points from different walks within 8 m merge (weighted average),
+   so walking the same way again makes it more accurate. Path ends join the streets within 30 m. */
+const MERGE_M = 8, JOIN_END_M = 30, JOIN_ANY_M = 8;
+function augmentWalk(G) {
+  const X = emptyX(); G.X = X;
+  const recs = typeof px !== "undefined" ? Object.values(px.paths || {}).filter(r => !r.del && r.pts && r.pts.length > 1) : [];
+  // 1. cluster points
+  const cl = [];                // {x,y,w}
+  const pick = (lng, lat, w) => {
+    let bi = -1, bd = MERGE_M;
+    for (let i = 0; i < cl.length; i++) { const d = mDist(G, cl[i].x, cl[i].y, lng, lat); if (d < bd) { bd = d; bi = i; } }
+    if (bi < 0) { cl.push({ x: lng, y: lat, w }); return cl.length - 1; }
+    const c = cl[bi], W = c.w + w; c.x = (c.x * c.w + lng * w) / W; c.y = (c.y * c.w + lat * w) / W; c.w = W; return bi;
+  };
+  const all = [];
+  recs.forEach((r, ri) => r.pts.forEach((p, pi) => all.push({ ri, pi, lat: p[0], lng: p[1], w: p[2] || 1 })));
+  all.sort((a, b) => b.w - a.w);                       // anchor clusters on the most trusted points first
+  const idx = recs.map(r => new Array(r.pts.length));
+  for (const p of all) idx[p.ri][p.pi] = pick(p.lng, p.lat, p.w);
+  const base = G.nV;
+  cl.forEach(c => { X.vx.push(c.x); X.vy.push(c.y); });
+  const addEdge = (a, b, coords, len) => {
+    const e = G.nE + X.ea.length;
+    X.ea.push(a); X.eb.push(b); X.coords.push(coords); X.el.push(len);
+    for (const v of [a, b]) { let l = X.adj.get(v); if (!l) X.adj.set(v, l = []); l.push(e); }
+    return e;
+  };
+  const seen = new Set(), deg = new Array(cl.length).fill(0), isEnd = new Array(cl.length).fill(false);
+  recs.forEach((r, ri) => {
+    const ix = idx[ri];
+    isEnd[ix[0]] = isEnd[ix[ix.length - 1]] = true;
+    for (let k = 0; k + 1 < ix.length; k++) {
+      const a = ix[k], b = ix[k + 1]; if (a === b) continue;
+      const key = Math.min(a, b) + ":" + Math.max(a, b); if (seen.has(key)) continue; seen.add(key);
+      const A = cl[a], B = cl[b];
+      const e = addEdge(base + a, base + b, [[A.x, A.y], [B.x, B.y]], mDist(G, A.x, A.y, B.x, B.y));
+      X.learned.push(e); deg[a]++; deg[b]++;
+    }
+  });
+  // 2. join to the streets: ends (and dead ends) within 30 m, anything within 8 m
+  cl.forEach((c, i) => {
+    const lim = (isEnd[i] || deg[i] <= 1) ? JOIN_END_M : JOIN_ANY_M;
+    const s = snapWalk(G, c.y, c.x, lim, true); if (!s) return;
+    addEdge(base + i, EA(G, s.e), [[c.x, c.y]].concat(partToward(G, s, false)), s.dist + s.toA);
+    addEdge(base + i, EB(G, s.e), [[c.x, c.y]].concat(partToward(G, s, true)), s.dist + s.toB);
+  });
+  const n = G.nV + cl.length;
+  G.dist = new Float64Array(n).fill(Infinity); G.prev = new Int32Array(n).fill(-1); G.touched = [];
+  G.augSig = pathsSig();
+}
+function pathsSig() { return typeof px === "undefined" ? "" : JSON.stringify(Object.values(px.paths || {}).filter(r => !r.del).map(r => [r.id, r.upd])); }
+function walkFresh() { if (walkG && walkG.augSig !== pathsSig()) { augmentWalk(walkG); walkCache = {}; pinSig = ""; } return walkG; }
 async function ensureWalk(showMsg) {
   if (walkG) return walkG;
   if (!walkLoading) walkLoading = (async () => {
@@ -1561,7 +1660,7 @@ async function ensureWalk(showMsg) {
       blob = await r.blob(); await idbPut(WALK_KEY, blob);
       if (showMsg) mapMsg("");
     }
-    walkG = parseWalk(await blob.arrayBuffer());
+    walkG = parseWalk(await blob.arrayBuffer()); augmentWalk(walkG);
     walkCache = {}; pinSig = "";
     return walkG;
   })();
@@ -1569,12 +1668,12 @@ async function ensureWalk(showMsg) {
 }
 let walkCache = {};
 function walkMatrixCached(points) {
-  if (!walkG) return null;
+  if (!walkFresh()) return null;
   const key = "M" + points.map(p => p.lat.toFixed(5) + "," + p.lng.toFixed(5)).join(";");
   return walkCache[key] || (walkCache[key] = walkMatrix(points));
 }
 function walkRouteCached(a, b) {
-  if (!walkG) return null;
+  if (!walkFresh()) return null;
   const key = "R" + [a.lat, a.lng, b.lat, b.lng].map(x => x.toFixed(5)).join(",");
   if (!(key in walkCache)) walkCache[key] = walkRoute(a, b);
   return walkCache[key];
@@ -1829,17 +1928,27 @@ function showStoreLoc() {
   const s = px.stores[curStore], l = sPendingLoc || (hasLoc(s) ? s : null);
   $("sLocInfo").textContent = l ? t("locSaved", { m: l.acc || "?" }) + (home ? " · " + fmtKm(km(home, l)) + " 🏠" : "") : t("noLoc");
 }
+let locBusy = false;
 async function captureStoreLoc(quiet) {
-  if (!quiet) $("sLocInfo").textContent = t("gettingLoc");
+  if (locBusy) return; locBusy = true;
   const forStore = curStore;
-  try { const p = await getPos(); if (curStore === forStore) { sPendingLoc = p; showStoreLoc(); } }
-  catch (e) { if (!quiet && curStore === forStore) $("sLocInfo").textContent = t("locFail"); }
+  const tick = left => { if (curStore === forStore) $("sLocInfo").textContent = t("holdStill", { s: left }); };
+  try {
+    const p = await avgPos(tick);
+    if (curStore === forStore) { sPendingLoc = p; showStoreLoc(); }
+    else {                                   // sheet already closed — save straight onto the store
+      const s = px.stores[forStore];
+      if (s && !s.del && (!hasLoc(s) || quiet === false)) saveRec("stores", Object.assign({}, s, { lat: p.lat, lng: p.lng, acc: p.acc }));
+      if ($("prices").classList.contains("on")) renderPrices();
+    }
+  } catch (e) { if (!quiet && curStore === forStore) $("sLocInfo").textContent = t("locFail"); }
+  finally { locBusy = false; }
 }
 $("sLoc").addEventListener("click", () => captureStoreLoc(false));
 $("homeBtn").addEventListener("click", async () => {
   if (!confirm(t("homeConfirm"))) return;
   $("homeInfo").textContent = t("gettingLoc");
-  try { const p = await getPos(); home = { lat: p.lat, lng: p.lng }; LS.set("home", home); toast(t("saved")); }
+  try { const p = await avgPos(left => { $("homeInfo").textContent = t("holdStill", { s: left }); }); home = { lat: p.lat, lng: p.lng }; LS.set("home", home); toast(t("saved")); }
   catch (e) { toast(t("locFail"), "trip"); }
   renderStores();
 });
@@ -2095,11 +2204,13 @@ function storePopup(s, items) {
       const b = document.createElement("b"); b.textContent = fmtK(priceKGS(x.c) * (x.l.qty || 1)); li.append(a, b); ul.appendChild(li); });
     d.appendChild(ul);
   }
+  const mv = document.createElement("button"); mv.className = "popbtn movebtn"; mv.style.background = "#5b6474"; mv.textContent = t("movePin");
+  mv.addEventListener("click", () => { map.closePopup(); startMovePin(s.id); });
   const wb = document.createElement("button"); wb.className = "popbtn walkbtn"; wb.textContent = t("walkHere");
   wb.addEventListener("click", () => { map.closePopup(); walkTo(s); });
   const btn = document.createElement("button"); btn.className = "popbtn"; btn.style.background = "#5b6474"; btn.textContent = t("openStore");
   btn.addEventListener("click", () => { map.closePopup(); openStore(s.id); });
-  d.append(wb, btn);
+  d.append(wb, btn, mv);
   return d;
 }
 function drawPins(force) {
@@ -2107,14 +2218,17 @@ function drawPins(force) {
   const plan = planList();
   const stores = liveOf("stores").filter(hasLoc);
   const sig = JSON.stringify([home, stores.map(s => [s.id, s.lat, s.lng, s.photo, s.name, s.note]), plan.order, Object.values(plan.groups).map(g => g.map(x => [x.l.id, x.l.qty, x.l.checked, x.c.id])), routeStart]);
+  if (mapMode) return;                       // don't redraw under your finger while moving/editing/recording
   if (!force && sig === pinSig) return;
   pinSig = sig;
+  pinMarkers = {};
   pinLayer.clearLayers();
   if (home) L.marker([home.lat, home.lng], { icon: pinIcon("🏠", "homewrap"), zIndexOffset: -100 }).bindPopup('<div class="popname">🏠 ' + esc(t("homeLabel")) + "</div>").addTo(pinLayer);
   const stopNo = {}; let n = 0;
   plan.order.forEach(id => { if (hasLoc(px.stores[id])) stopNo[id] = ++n; });
   for (const s of stores) {
     const m = L.marker([s.lat, s.lng], { icon: pinIcon("🏪", stopNo[s.id] ? "onlist" : "", stopNo[s.id]), zIndexOffset: stopNo[s.id] ? 400 : 0 });
+    pinMarkers[s.id] = m;
     m.bindPopup(() => storePopup(s, plan.groups[s.id]), { maxWidth: 240 });
     m.addTo(pinLayer);
     if (s.photo) photoURL(s.photo).then(u => { const el = m.getElement(); if (u && el) { const p = el.querySelector(".pin"); p.innerHTML = ""; const im = document.createElement("img"); im.src = u; im.alt = ""; p.appendChild(im); } });
@@ -2132,6 +2246,7 @@ function drawPins(force) {
     if (all.length > 1) { map.fitBounds(L.latLngBounds(all).pad(0.25), { maxZoom: 16 }); mapFitted = true; }
     else if (all.length === 1) { map.setView(all[0], 16); mapFitted = true; }
   }
+  drawPaths();
   if (!stores.length && $("mapMsg").style.display !== "block") mapMsg(t("mapNoPins"), true);
 }
 let walkLayer = null;
@@ -2142,6 +2257,7 @@ async function walkTo(s) {
   const from = inCity(lastMe) ? Object.assign({ src: "here" }, lastMe) : home ? Object.assign({ src: "home" }, home) : null;
   if (!from) { mapMsg(t("walkNoStart"), true); return; }
   const g = await ensureWalk(true);
+  if (g) walkFresh();
   const w = g ? walkRoute(from, s) : null;
   if (!w) { mapMsg(t(g ? "walkNoPath" : "walkNeedsNet"), true); return; }
   walkLayer = L.layerGroup([
@@ -2163,7 +2279,163 @@ function startWatch() {
     } else { meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(acc); }
   }, () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
 }
-function stopWatch() { if (watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(watchId); watchId = null; }
+function stopWatch() { if (rec) return; if (watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(watchId); watchId = null; }
+
+/* ---------- map modes: move a pin, record a path, edit a path ---------- */
+let mapMode = null, pinMarkers = {}, pathLayer = null;
+function modeBar(text, buttons) {
+  $("modeText").innerHTML = text; const b = $("modeBtns"); b.innerHTML = "";
+  for (const [label, cls, fn] of buttons) { const x = document.createElement("button"); x.textContent = label; if (cls) x.className = cls; x.addEventListener("click", fn); b.appendChild(x); }
+  $("modeBar").style.display = "block"; $("recBtn").style.display = "none"; $("mapMe").style.bottom = ($("modeBar").offsetHeight + 40) + "px";
+}
+function endMode() { mapMode = null; $("modeBar").style.display = "none"; $("recBtn").style.display = ""; $("mapMe").style.bottom = ""; pinSig = ""; drawPins(true); }
+function startMovePin(id) {
+  const m = pinMarkers[id], s = px.stores[id]; if (!m || !s) return;
+  mapMode = "move"; m.dragging.enable(); map.setView(m.getLatLng(), Math.max(map.getZoom(), 18));
+  modeBar(esc(t("movePinHelp")), [
+    [t("cancel2"), "", () => { m.dragging.disable(); endMode(); }],
+    [t("done"), "ok", () => { const ll = m.getLatLng(); m.dragging.disable(); saveRec("stores", Object.assign({}, px.stores[id], { lat: ll.lat, lng: ll.lng, acc: 2, manual: true })); toast(t("saved")); endMode(); }]
+  ]);
+}
+function drawPaths() {
+  if (!map) return;
+  if (pathLayer) pathLayer.remove();
+  pathLayer = L.layerGroup().addTo(map);
+  for (const r of Object.values(px.paths).filter(r => !r.del && r.pts && r.pts.length > 1)) {
+    const line = L.polyline(r.pts.map(p => [p[0], p[1]]), { color: "#f0a531", weight: 4, opacity: .85, className: "learned" }).addTo(pathLayer);
+    line.on("click", ev => { L.DomEvent.stop(ev); pathPopup(r, ev.latlng); });
+  }
+}
+function pathLen(pts) { let m = 0; for (let i = 1; i < pts.length; i++) m += km({ lat: pts[i - 1][0], lng: pts[i - 1][1] }, { lat: pts[i][0], lng: pts[i][1] }) * 1000; return m; }
+function pathPopup(r, ll) {
+  const d = document.createElement("div");
+  const h = document.createElement("div"); h.className = "popname"; h.style.fontSize = "15px";
+  h.textContent = t("pathPop", { m: Math.round(pathLen(r.pts)), date: shortDate(r.date), who: r.person || "" }); d.appendChild(h);
+  const e = document.createElement("button"); e.className = "popbtn editpath"; e.textContent = t("editPts");
+  e.addEventListener("click", () => { map.closePopup(); editPath(r.id); });
+  const x = document.createElement("button"); x.className = "popbtn delpath"; x.style.background = "#c0392b"; x.textContent = t("delPath");
+  x.addEventListener("click", () => {
+    if (!x.dataset.armed) { x.dataset.armed = "1"; x.textContent = t("deleteConfirm"); return; }
+    saveRec("paths", Object.assign({}, px.paths[r.id], { del: true })); map.closePopup(); toast(t("pathDeleted")); pinSig = ""; drawPins(true);
+  });
+  d.append(e, x);
+  L.popup({ maxWidth: 240 }).setLatLng(ll).setContent(d).openOn(map);
+}
+function editPath(id) {
+  const r = px.paths[id]; if (!r) return;
+  mapMode = "edit";
+  const pts = r.pts.map(p => p.slice());
+  const lay = L.layerGroup().addTo(map);
+  const line = L.polyline(pts.map(p => [p[0], p[1]]), { color: "#f0a531", weight: 4, dashArray: "6 6", interactive: false }).addTo(lay);
+  pts.forEach((p, i) => {
+    const mk = L.marker([p[0], p[1]], { draggable: true, icon: L.divIcon({ className: "", html: '<div class="vtx' + ((p[2] || 1) >= 3 ? " jn" : "") + '"></div>', iconSize: [22, 22], iconAnchor: [11, 11] }) }).addTo(lay);
+    mk.on("drag", () => { const ll = mk.getLatLng(); pts[i][0] = ll.lat; pts[i][1] = ll.lng; line.setLatLngs(pts.map(q => [q[0], q[1]])); });
+    mk.on("dragend", () => { pts[i][2] = 10; });          // placed by eye = trusted most
+  });
+  map.fitBounds(L.latLngBounds(pts.map(p => [p[0], p[1]])).pad(0.3), { maxZoom: 19 });
+  if (pathLayer) pathLayer.remove();
+  modeBar(esc(t("editHelp")), [
+    [t("cancel2"), "", () => { lay.remove(); endMode(); }],
+    [t("done"), "ok", () => { lay.remove(); saveRec("paths", Object.assign({}, px.paths[id], { pts: pts.map(p => [+p[0].toFixed(7), +p[1].toFixed(7), p[2] || 1]) })); toast(t("saved")); endMode(); }]
+  ]);
+}
+
+/* recording: breadcrumbs + averaged junction waypoints */
+let rec = null;
+function geoM(a, b) { return km(a, b) * 1000; }
+function perpM(p, a, b) {       // distance from p to segment a-b, metres
+  const KX = 81600, KY = 110540, ax = (a.lng - p.lng) * KX, ay = (a.lat - p.lat) * KY, bx = (b.lng - p.lng) * KX, by = (b.lat - p.lat) * KY;
+  const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy; let tt = L2 ? -(ax * vx + ay * vy) / L2 : 0; tt = Math.max(0, Math.min(1, tt));
+  return Math.hypot(ax + tt * vx, ay + tt * vy);
+}
+function dp(pts, tol) {          // Douglas–Peucker; keeps first and last
+  if (pts.length < 3) return pts.slice();
+  let bi = -1, bd = 0;
+  for (let i = 1; i < pts.length - 1; i++) { const d = perpM(pts[i], pts[0], pts[pts.length - 1]); if (d > bd) { bd = d; bi = i; } }
+  if (bd <= tol) return [pts[0], pts[pts.length - 1]];
+  return dp(pts.slice(0, bi + 1), tol).slice(0, -1).concat(dp(pts.slice(bi), tol));
+}
+function cleanCrumbs(raw) {
+  // drop rough fixes and jumps faster than a brisk walk, then smooth with a small moving average
+  const ok = []; for (const p of raw) { if (p.acc > 25) continue; const q = ok[ok.length - 1]; if (q && geoM(q, p) / Math.max(1, (p.ts - q.ts) / 1000) > (window.__maxSpeed || 3)) continue; ok.push(p); }
+  return ok.map((p, i) => { const w = ok.slice(Math.max(0, i - 2), i + 3); return { lat: w.reduce((s, x) => s + x.lat, 0) / w.length, lng: w.reduce((s, x) => s + x.lng, 0) / w.length, ts: p.ts, w: 1 }; });
+}
+function buildPath(raw, jn) {
+  const crumbs = cleanCrumbs(raw);
+  let pts;
+  if (jn.length) {
+    // junctions are anchors; between two junctions keep the walked curve only where it bends > 12 m off the straight line
+    const anchors = jn.slice();
+    const c0 = crumbs[0], c1 = crumbs[crumbs.length - 1], a0 = anchors[0], a1 = anchors[anchors.length - 1];
+    if (c0 && c0.ts < a0.ts && geoM(c0, a0) > 6) anchors.unshift(c0);           // walked before the first junction
+    if (c1 && c1.ts > a1.ts && geoM(c1, a1) > 6) anchors.push(c1);              // and after the last one
+    pts = [anchors[0]];
+    for (let i = 0; i + 1 < anchors.length; i++) {
+      const a = anchors[i], b = anchors[i + 1], mid = crumbs.filter(c => c.ts > a.ts && c.ts < b.ts);
+      pts = pts.concat(dp([a].concat(mid, [b]), 12).slice(1));
+    }
+  } else pts = dp(crumbs, 6);
+  return pts.map(p => [+p.lat.toFixed(7), +p.lng.toFixed(7), p.w || 1]);
+}
+async function keepAwake(on) {
+  try { if (on && "wakeLock" in navigator) rec.lock = await navigator.wakeLock.request("screen"); else if (!on && rec && rec.lock) { await rec.lock.release(); rec.lock = null; } } catch (e) {}
+}
+function recUI() {
+  if (!rec) return;
+  const crumbs = cleanCrumbs(rec.raw); let m = 0; for (let i = 1; i < crumbs.length; i++) m += geoM(crumbs[i - 1], crumbs[i]);
+  const acc = rec.raw.length ? Math.round(rec.raw[rec.raw.length - 1].acc) : "?";
+  let txt = '<span class="recdot"></span>' + esc(t("recHelp")) + "<br><b>" + esc(t("recStats", { m: Math.round(m), j: rec.jn.length, acc })) + "</b>";
+  if (acc !== "?" && acc > 25) txt += "<br>" + esc(t("recWeak", { acc }));
+  if (!rec.locked) txt += "<br>" + esc(t("keepAwake"));
+  $("modeText").innerHTML = txt; $("mapMe").style.bottom = ($("modeBar").offsetHeight + 40) + "px";
+  rec.line.setLatLngs(crumbs.map(c => [c.lat, c.lng]));
+}
+function startRecording() {
+  if (!map || !navigator.geolocation) { toast(t("locFail"), "trip"); return; }
+  clearWalk();
+  mapMode = "rec";
+  rec = { raw: [], jn: [], busy: false, lay: L.layerGroup().addTo(map) };
+  rec.line = L.polyline([], { color: "#e0412f", weight: 4, opacity: .9, interactive: false, className: "recline" }).addTo(rec.lay);
+  rec.watch = navigator.geolocation.watchPosition(p => {
+    if (!rec || rec.busy) return;
+    rec.raw.push({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy || 50, ts: Date.now() });
+    recUI();
+  }, () => {}, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+  keepAwake(true).then(() => { if (rec) { rec.locked = !!rec.lock; recUI(); } });
+  modeBar("", [
+    [t("discard"), "", () => stopRecording(false)],
+    [t("junction"), "jbtn", junction],
+    [t("stopSave"), "stop", () => stopRecording(true)]
+  ]);
+  recUI();
+}
+async function junction(ev) {
+  if (!rec || rec.busy) return;
+  const btn = ev.currentTarget; rec.busy = true; navigator.geolocation.clearWatch(rec.watch);
+  try {
+    const p = await avgPos(left => { btn.textContent = t("holdStill", { s: left }); });
+    const j = { lat: p.lat, lng: p.lng, ts: Date.now(), w: 3 };
+    rec.jn.push(j);
+    L.marker([j.lat, j.lng], { interactive: false, icon: L.divIcon({ className: "", html: '<div class="vtx jn"></div>', iconSize: [22, 22], iconAnchor: [11, 11] }) }).addTo(rec.lay);
+  } catch (e) { toast(t("locFail"), "trip"); }
+  btn.textContent = t("junction");
+  if (!rec) return;
+  rec.busy = false;
+  rec.watch = navigator.geolocation.watchPosition(p => { if (!rec || rec.busy) return; rec.raw.push({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy || 50, ts: Date.now() }); recUI(); }, () => {}, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+  recUI();
+}
+function stopRecording(save) {
+  if (!rec) return;
+  navigator.geolocation.clearWatch(rec.watch); keepAwake(false);
+  const r = rec; rec = null; r.lay.remove();
+  if (save) {
+    const pts = buildPath(r.raw, r.jn);
+    if (pts.length < 2 || pathLen(pts) < 15) toast(t("pathTooShort"), "trip");
+    else { saveRec("paths", { id: uid(), pts, date: localDate(new Date()), person: me }); toast(t("pathSaved")); }
+  }
+  endMode();
+}
+$("recBtn").addEventListener("click", startRecording);
 $("walkClose").addEventListener("click", clearWalk);
 $("mapMe").addEventListener("click", () => {
   if (lastMe && map) map.setView([lastMe.lat, lastMe.lng], Math.max(map.getZoom(), 16));
@@ -2198,7 +2470,7 @@ nextStep();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 
 // test hook (no secrets exposed beyond what this phone already stores)
-window.__rz = { walkRoute: (a, b) => walkRoute(a, b), ensureWalk: () => ensureWalk(), syncNow, get entries() { return entries; }, get dirty() { return dirty; }, get px() { return px; }, buildExport, buildCSV, computeSummary, planList };
+window.__rz = { walkRoute: (a, b) => { walkFresh(); return walkRoute(a, b); }, buildPath,  ensureWalk: () => ensureWalk(), syncNow, get entries() { return entries; }, get dirty() { return dirty; }, get px() { return px; }, buildExport, buildCSV, computeSummary, planList };
 })();
 </script>
 </body>
