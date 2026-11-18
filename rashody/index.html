@@ -69,7 +69,7 @@
   #toast.trip{background:var(--trip);color:#1d1203}
 
   /* ---------- tabs ---------- */
-  nav{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);background:var(--panel);
+  nav{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);background:var(--panel);
     padding-bottom:env(safe-area-inset-bottom)}
   nav button{border:none;border-radius:0;background:none;height:54px;font-size:13px;color:var(--muted)}
   nav button b{display:block;font-size:20px;line-height:22px}
@@ -108,6 +108,36 @@
   .sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:20}
   .sheet.open{display:flex}
   .sheet .card{width:100%;border-radius:16px 16px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto}
+  /* ---------- prices ---------- */
+  .subtabs{display:flex;gap:6px;padding:8px 14px 0}
+  .subtabs button{flex:1;height:40px}
+  .subtabs button.sel{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .pview{display:none}
+  .pview.on{display:block}
+  .thumb{width:52px;height:52px;border-radius:10px;object-fit:cover;background:#262b33;flex:0 0 52px;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--muted);overflow:hidden}
+  .thumb img{width:100%;height:100%;object-fit:cover}
+  .bigphoto{width:100%;max-height:34vh;border-radius:12px;background:#262b33;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:15px;min-height:120px;overflow:hidden;cursor:pointer}
+  .bigphoto img{width:100%;max-height:34vh;object-fit:cover}
+  .pricerow{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid var(--line)}
+  .pricerow .l{flex:1;min-width:0}
+  .pricerow .p{font-weight:700;white-space:nowrap}
+  .best{color:var(--living);font-size:12px;font-weight:700;margin-left:4px}
+  .hist{font-size:12px;color:var(--accent);background:none;border:none;padding:2px 0}
+  .histlist{font-size:13px;color:var(--muted);padding:2px 0 6px 6px}
+  .lgroup{margin-top:14px}
+  .lgroup h4{margin:0 0 4px;font-size:14px;color:var(--muted);font-weight:600}
+  .litem{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line)}
+  .litem input[type=checkbox]{width:26px;height:26px;flex:0 0 26px;accent-color:var(--living)}
+  .litem .nm{flex:1;min-width:0}
+  .litem.done .nm,.litem.done .p{text-decoration:line-through;color:var(--muted)}
+  .qty{display:flex;align-items:center;gap:4px}
+  .qty{gap:2px;font-size:13px}
+  .qty button{width:28px;height:28px;padding:0;border-radius:8px}
+  .litem .nm{overflow-wrap:anywhere;line-height:1.25}
+  .total{display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin-top:14px;padding-top:10px;border-top:2px solid var(--line)}
+  .addrow{display:flex;gap:8px;margin-top:8px}
+  .addrow input{flex:1}
+  .addrow button{flex:0 0 auto;padding:0 14px}
   #setup{position:fixed;inset:0;background:var(--bg);z-index:25;display:none;overflow-y:auto;
     padding:calc(20px + env(safe-area-inset-top)) 18px calc(30px + env(safe-area-inset-bottom))}
   #setup.open{display:block}
@@ -145,6 +175,96 @@
     <div id="recentList"></div>
   </div>
 </section>
+
+<!-- ============ PRICES ============ -->
+<section class="view" id="prices">
+  <div class="subtabs">
+    <button data-pv="pItems" class="sel" data-i18n="pItems">Items</button>
+    <button data-pv="pStores" data-i18n="pStores">Stores</button>
+    <button data-pv="pList" data-i18n="pList">List</button>
+  </div>
+  <div class="scroll">
+    <div class="pview on" id="pItems">
+      <div class="addrow" style="margin-top:0">
+        <input id="itemSearch" autocomplete="off" data-i18n-ph="searchPh">
+        <button id="newItemBtn" class="primary">＋</button>
+      </div>
+      <div id="itemList"></div>
+    </div>
+    <div class="pview" id="pStores">
+      <div class="row" style="margin-top:0"><button id="newStoreBtn" class="primary" data-i18n="newStore">＋ New store</button></div>
+      <div id="storeList"></div>
+    </div>
+    <div class="pview" id="pList">
+      <div class="addrow" style="margin-top:0">
+        <input id="listAdd" list="productNames" autocomplete="off" data-i18n-ph="listAddPh">
+        <button id="listAddBtn" class="primary">＋</button>
+      </div>
+      <div id="listPlan"></div>
+      <div class="row">
+        <button id="listClearChecked" data-i18n="clearChecked">Remove checked</button>
+        <button id="listClearAll" data-i18n="clearList">Clear list</button>
+      </div>
+    </div>
+  </div>
+  <datalist id="productNames"></datalist>
+</section>
+
+<!-- product sheet -->
+<div class="sheet" id="productSheet">
+  <div class="card">
+    <div class="bigphoto" id="pPhoto"></div>
+    <label data-i18n="itemName">Item</label>
+    <input id="pName" autocomplete="off">
+    <div class="row" style="margin-top:0">
+      <div style="flex:1"><label data-i18n="unitLabel">Size / unit</label><input id="pUnit" autocomplete="off" data-i18n-ph="unitPh"></div>
+    </div>
+    <label data-i18n="noteLabel">Note</label>
+    <input id="pNote" autocomplete="off">
+    <h3 data-i18n="pricesByStore">Prices by store</h3>
+    <div id="pPrices"></div>
+    <label data-i18n="addPrice">Add / update a price</label>
+    <div class="addrow" style="margin-top:0">
+      <select id="pStoreSel" style="flex:1.4"></select>
+      <input id="pAmt" type="number" inputmode="decimal" step="0.01" min="0" style="flex:1">
+      <button id="pCur" style="flex:0 0 64px">KGS</button>
+    </div>
+    <div class="row">
+      <button id="pSave" class="primary" data-i18n="save">Save</button>
+      <button id="pToList" data-i18n="addToList">＋ List</button>
+      <button id="pClose" data-i18n="close">Close</button>
+    </div>
+    <div class="row"><button id="pDelete" class="danger" data-i18n="deleteItem">Delete item</button></div>
+  </div>
+</div>
+
+<!-- store sheet -->
+<div class="sheet" id="storeSheet">
+  <div class="card">
+    <div class="bigphoto" id="sPhoto"></div>
+    <label data-i18n="storeName">Store / stall</label>
+    <input id="sName" autocomplete="off">
+    <label data-i18n="distLabel">Distance (any number — lower = closer)</label>
+    <input id="sDist" type="number" inputmode="decimal" step="0.1" min="0">
+    <label data-i18n="noteLabel">Note</label>
+    <input id="sNote" autocomplete="off">
+    <h3 data-i18n="pricesHere">Prices here</h3>
+    <div id="sPrices"></div>
+    <label data-i18n="quickPrice">Add a price here</label>
+    <div class="addrow" style="margin-top:0">
+      <input id="sqName" list="productNames" autocomplete="off" data-i18n-ph="itemName" style="flex:1.6">
+      <input id="sqAmt" type="number" inputmode="decimal" step="0.01" min="0" style="flex:1">
+      <button id="sqCur" style="flex:0 0 64px">KGS</button>
+    </div>
+    <div class="row" style="margin-top:6px"><button id="sqAdd" data-i18n="addPriceBtn">Add price</button></div>
+    <div class="row">
+      <button id="sSave" class="primary" data-i18n="save">Save</button>
+      <button id="sClose" data-i18n="close">Close</button>
+    </div>
+    <div class="row"><button id="sDelete" class="danger" data-i18n="deleteStore">Delete store</button></div>
+  </div>
+</div>
+<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
 
 <!-- ============ SUMMARY ============ -->
 <section class="view" id="summary">
@@ -210,6 +330,7 @@
 <nav>
   <button data-view="add" class="on"><b>＋</b><span data-i18n="tabAdd">Add</span></button>
   <button data-view="recent"><b>☰</b><span data-i18n="tabRecent">Recent</span></button>
+  <button data-view="prices"><b>🏷</b><span data-i18n="tabPrices">Prices</span></button>
   <button data-view="summary"><b>Σ</b><span data-i18n="tabSummary">Summary</span></button>
   <button data-view="settings"><b>⚙︎</b><span data-i18n="tabSettings">Settings</span></button>
 </nav>
@@ -356,7 +477,17 @@ const T = {
     otherNote:"On the other phone tap “Copy for Claude”, send it to yourself, and paste it here. Pasting the same export twice won't double anything.",
     importBtn:"Add these entries", localWarn:"Entries live only on this phone (inside the Home Screen app). Every few days, tap “Copy for Claude” and paste it somewhere safe as a backup.",
     goShared:"Set up syncing between phones", localStatus:"On this phone only · {n} entries", imported:"Added {a} entries ({s} already here).",
-    importNone:"No entries found — paste the whole “Copy for Claude” text."
+    importNone:"No entries found — paste the whole “Copy for Claude” text.",
+    tabPrices:"Prices", pItems:"Items", pStores:"Stores", pList:"List", searchPh:"Search items", newStore:"＋ New store",
+    listAddPh:"Add an item to the list", clearChecked:"Remove checked", clearList:"Clear list", itemName:"Item",
+    unitLabel:"Size / unit", unitPh:"e.g. 1 kg, 85 g pouch", noteLabel:"Note", pricesByStore:"Prices by store",
+    addPrice:"Add / update a price", addToList:"＋ List", deleteItem:"Delete item", storeName:"Store / stall",
+    distLabel:"Distance (any number — lower = closer)", pricesHere:"Prices here", quickPrice:"Add a price here",
+    addPriceBtn:"Add price", deleteStore:"Delete store", tapPhoto:"Tap to add a photo", noItems:"No items yet. Add one with ＋, or from a store.",
+    noStores:"No stores yet.", noPrices:"No prices yet.", history:"history", cheapest:"cheapest", listEmpty:"Your list is empty. Add items above.",
+    noPriceYet:"No price yet", expectedTotal:"Expected total", remaining:"Still to buy", pickStore:"Pick a store",
+    needStore:"Add a store first (Stores tab).", unknownItem:"Not in your items yet — added it.", added:"Added.", qtyLabel:"qty",
+    noDist:"no distance"
   },
   ru: {
     living:"ЖИЗНЬ", trip:"ПОЕЗДКА", notePh:"Заметка (необязательно)", recentTitle:"Последние 30", settingsTitle:"Настройки",
@@ -386,7 +517,17 @@ const T = {
     otherNote:"На втором телефоне нажмите «Копировать для Claude», перешлите себе и вставьте сюда. Повторная вставка ничего не удвоит.",
     importBtn:"Добавить записи", localWarn:"Записи хранятся только на этом телефоне (в приложении на экране «Домой»). Раз в несколько дней копируйте их для Claude и сохраняйте как резервную копию.",
     goShared:"Настроить синхронизацию", localStatus:"Только на этом телефоне · записей: {n}", imported:"Добавлено: {a} (уже были: {s}).",
-    importNone:"Записи не найдены — вставьте весь текст «Копировать для Claude»."
+    importNone:"Записи не найдены — вставьте весь текст «Копировать для Claude».",
+    tabPrices:"Цены", pItems:"Товары", pStores:"Магазины", pList:"Список", searchPh:"Поиск товара", newStore:"＋ Новый магазин",
+    listAddPh:"Добавить товар в список", clearChecked:"Убрать купленное", clearList:"Очистить список", itemName:"Товар",
+    unitLabel:"Размер / единица", unitPh:"напр. 1 кг, пакетик 85 г", noteLabel:"Заметка", pricesByStore:"Цены по магазинам",
+    addPrice:"Добавить / обновить цену", addToList:"＋ Список", deleteItem:"Удалить товар", storeName:"Магазин / точка",
+    distLabel:"Расстояние (любое число — меньше = ближе)", pricesHere:"Цены здесь", quickPrice:"Добавить цену здесь",
+    addPriceBtn:"Добавить цену", deleteStore:"Удалить магазин", tapPhoto:"Нажмите, чтобы добавить фото", noItems:"Товаров пока нет. Добавьте через ＋ или из магазина.",
+    noStores:"Магазинов пока нет.", noPrices:"Цен пока нет.", history:"история", cheapest:"дешевле всего", listEmpty:"Список пуст. Добавьте товары выше.",
+    noPriceYet:"Цены пока нет", expectedTotal:"Ожидаемая сумма", remaining:"Осталось купить", pickStore:"Выберите магазин",
+    needStore:"Сначала добавьте магазин (вкладка «Магазины»).", unknownItem:"Такого товара не было — добавлен.", added:"Добавлено.", qtyLabel:"шт",
+    noDist:"без расстояния"
   }
 };
 const PERSON_RU = { Allen: "Аллен", Sveta: "Света" };
@@ -408,9 +549,13 @@ let dirty   = LS.get("dirty", false);   // our file has local changes not yet pu
 let files   = LS.get("files", {});      // person -> { sha, etag }
 let shared  = LS.get("shared", { rate: DEFAULT_RATE, upd: 0, by: "" });   // shared settings (rate)
 let lastSync = LS.get("lastSync", 0), syncError = "";
+// prices: stores, products, price observations (history), shopping list — same merge rules as entries
+let px = LS.get("px", { stores: {}, products: {}, prices: {}, list: {} });
+["stores", "products", "prices", "list"].forEach(k => { if (!px[k]) px[k] = {}; });
+let photoQueue = LS.get("photoQueue", []);      // photo ids waiting to upload
 
 function persist() {
-  const ok = LS.set("entries", entries) && LS.set("dirty", dirty) && LS.set("shared", shared);
+  const ok = LS.set("entries", entries) && LS.set("dirty", dirty) && LS.set("shared", shared) && LS.set("px", px) && LS.set("photoQueue", photoQueue);
   return ok;
 }
 function t(k, vars) { let s = (T[lang] && T[lang][k]) || T.en[k] || k; if (vars) for (const v in vars) s = s.replace("{" + v + "}", vars[v]); return s; }
@@ -702,6 +847,10 @@ function buildExport() {
   md += mdTable("By category", s.byCat, s.all);
   md += mdTable("By person", s.byPerson, s.all);
   md += "## All entries\n\n```csv\n" + buildCSV() + "\n```\n";
+  if (Object.values(px.prices).some(r => !r.del)) {
+    md += "\n## Prices we've recorded\n\nLatest price for each item at each store (KGS converted at the rate above):\n\n```csv\n" + buildPricesCSV(false) + "\n```\n";
+    md += "\nFull price history:\n\n```csv\n" + buildPricesCSV(true) + "\n```\n";
+  }
   return md;
 }
 async function copyText(text) {
@@ -860,6 +1009,13 @@ function mergeDoc(doc) {
     if (newer(e, entries[e.id]) && JSON.stringify(e) !== JSON.stringify(entries[e.id])) { entries[e.id] = e; changed = true; }
   }
   if (doc.shared && (doc.shared.upd || 0) > (shared.upd || 0)) { shared = doc.shared; changed = true; }
+  const dp = doc.px || {};
+  for (const k of ["stores", "products", "prices", "list"]) {
+    for (const r of (dp[k] || [])) {
+      if (!r || !r.id) continue;
+      if (newer(r, px[k][r.id]) && JSON.stringify(r) !== JSON.stringify(px[k][r.id])) { px[k][r.id] = r; changed = true; }
+    }
+  }
   return changed;
 }
 async function pull(person, force) {
@@ -876,7 +1032,9 @@ async function pull(person, force) {
 function myDoc() {
   // our file holds every entry whose latest edit is ours, plus the shared settings if we changed them last
   const mine = Object.values(entries).filter(e => e.editor === me).sort((a, b) => a.ts - b.ts);
-  return { v: 1, person: me, updated: Date.now(), shared: shared.by === me ? shared : undefined, entries: mine };
+  const mineOf = k => Object.values(px[k]).filter(r => r.editor === me);
+  return { v: 2, person: me, updated: Date.now(), shared: shared.by === me ? shared : undefined, entries: mine,
+    px: { stores: mineOf("stores"), products: mineOf("products"), prices: mineOf("prices"), list: mineOf("list") } };
 }
 async function push() {
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -906,11 +1064,13 @@ async function syncNow() {
     let changed = false;
     for (const p of PEOPLE) changed = (await pull(p, p === me && dirty)) || changed;
     if (dirty) {
-      const pendingAtStart = JSON.stringify(myDoc().entries) + JSON.stringify(shared);
+      const snap = () => { const d = myDoc(); return JSON.stringify([d.entries, d.px, shared]); };
+      const pendingAtStart = snap();
       await push();
       // only clear the flag if nothing new was saved while we were uploading
-      if (JSON.stringify(myDoc().entries) + JSON.stringify(shared) === pendingAtStart) dirty = false;
+      if (snap() === pendingAtStart) dirty = false;
     }
+    await uploadPhotos();
     LS.set("files", files);
     lastSync = Date.now(); LS.set("lastSync", lastSync); syncError = "";
     persist();
@@ -990,6 +1150,407 @@ $("goShared").addEventListener("click", () => { wantShared = true; showStep("ste
 document.querySelectorAll("[data-pick]").forEach(b => b.addEventListener("click", () => { me = b.dataset.pick; LS.set("me", me); nextStep(); }));
 
 /* =====================================================================
+   Prices: stores, items, price history, shopping list, photos
+   ===================================================================== */
+const liveOf = k => Object.values(px[k]).filter(r => !r.del);
+function stamp(r) { r.upd = Math.max(Date.now(), (r.upd || 0) + 1); r.editor = me; return r; }
+function saveRec(k, r) { px[k][r.id] = stamp(Object.assign({}, r)); dirty = true; persist(); scheduleSync(300); return px[k][r.id]; }
+function priceKGS(p) { return p.cur === "USD" ? p.amt * rate() : p.amt; }
+function fmtPrice(p) { return p.cur === "USD" ? fmtU(p.amt) : fmtK(p.amt); }
+function storeName(id) { const s = px.stores[id]; return s && !s.del ? s.name : "?"; }
+function storeDist(id) { const s = px.stores[id]; const d = s && !s.del ? parseFloat(s.dist) : NaN; return isNaN(d) ? Infinity : d; }
+function historyFor(productId, storeId) {
+  return liveOf("prices").filter(p => p.product === productId && (!storeId || p.store === storeId) && px.stores[p.store] && !px.stores[p.store].del)
+    .sort((a, b) => b.ts - a.ts);
+}
+function latestByStore(productId) {
+  const m = {};
+  for (const p of historyFor(productId)) if (!m[p.store]) m[p.store] = p;     // newest first, so first seen = latest
+  return Object.values(m).sort((a, b) => (priceKGS(a) - priceKGS(b)) || (storeDist(a.store) - storeDist(b.store)));
+}
+function cheapest(productId) { return latestByStore(productId)[0] || null; }
+function shortDate(d) { return d ? d.slice(5) : ""; }
+
+/* ---------- photos: small JPEGs in IndexedDB, synced as separate files ---------- */
+let idbP = null;
+function idb() {
+  if (!idbP) idbP = new Promise((res, rej) => {
+    const r = indexedDB.open("rashody", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("photos");
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+  return idbP;
+}
+async function idbGet(id) { const db = await idb(); return new Promise(res => { const q = db.transaction("photos").objectStore("photos").get(id); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }); }
+async function idbPut(id, blob) { const db = await idb(); return new Promise((res, rej) => { const tx = db.transaction("photos", "readwrite"); tx.objectStore("photos").put(blob, id); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+function shrink(file) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const max = 720, k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(b => b ? res(b) : rej(new Error("photo")), "image/jpeg", 0.72);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("photo")); };
+    img.src = url;
+  });
+}
+const photoURLs = {}, photoFetching = {};
+async function photoURL(id) {
+  if (!id) return null;
+  if (photoURLs[id]) return photoURLs[id];
+  let blob = await idbGet(id);
+  if (!blob && cfg && !cfg.local && navigator.onLine !== false && !photoFetching[id]) {
+    photoFetching[id] = true;
+    try {
+      const r = await fetch(API + "/repos/" + cfg.repo + "/contents/photos/" + id + ".jpg", { headers: ghHeaders({ "Accept": "application/vnd.github.raw" }), cache: "no-store" });
+      if (r.ok) { blob = await r.blob(); await idbPut(id, blob); }
+    } catch (e) {} finally { photoFetching[id] = false; }
+  }
+  if (!blob) return null;
+  return (photoURLs[id] = URL.createObjectURL(blob));
+}
+function hydratePhotos(root) {
+  root.querySelectorAll("[data-photo]").forEach(async el => {
+    const u = await photoURL(el.dataset.photo);
+    if (u) { el.innerHTML = ""; const im = document.createElement("img"); im.src = u; im.alt = ""; el.appendChild(im); }
+  });
+}
+async function uploadPhotos() {
+  if (!cfg || cfg.local || !photoQueue.length) return;
+  for (const id of photoQueue.slice()) {
+    const blob = await idbGet(id);
+    if (blob) {
+      const buf = new Uint8Array(await blob.arrayBuffer()); let s = "";
+      for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+      const r = await fetch(API + "/repos/" + cfg.repo + "/contents/photos/" + id + ".jpg", { method: "PUT", headers: ghHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ message: "rashody photo " + id, content: btoa(s) }), cache: "no-store" });
+      if (!r.ok && r.status !== 422) throw new Error("photo " + r.status);      // 422 = already uploaded
+    }
+    photoQueue = photoQueue.filter(x => x !== id); LS.set("photoQueue", photoQueue);
+  }
+}
+let photoTarget = null;      // callback receiving the new photo id
+$("photoInput").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = "";
+  if (!f || !photoTarget) return;
+  try {
+    const blob = await shrink(f), id = uid();
+    await idbPut(id, blob);
+    if (!photoQueue.includes(id)) photoQueue.push(id);
+    LS.set("photoQueue", photoQueue);
+    const cb = photoTarget; photoTarget = null; cb(id);
+  } catch (err) { toast("⚠", "trip"); }
+});
+function pickPhoto(cb) { photoTarget = cb; $("photoInput").click(); }
+function thumbEl(photoId, fallback) {
+  const d = document.createElement("div"); d.className = "thumb"; d.textContent = fallback || "📷";
+  if (photoId) d.dataset.photo = photoId;
+  return d;
+}
+function bigPhoto(el, photoId) {
+  el.innerHTML = ""; el.textContent = t("tapPhoto");
+  if (photoId) { el.dataset.photo = photoId; hydratePhotos(el.parentNode); } else delete el.dataset.photo;
+}
+
+/* ---------- sub-tabs ---------- */
+let pview = "pItems";
+document.querySelectorAll("[data-pv]").forEach(b => b.addEventListener("click", () => { pview = b.dataset.pv; renderPrices(); }));
+function renderPrices() {
+  document.querySelectorAll("[data-pv]").forEach(b => b.classList.toggle("sel", b.dataset.pv === pview));
+  document.querySelectorAll(".pview").forEach(v => v.classList.toggle("on", v.id === pview));
+  const dl = $("productNames"); dl.innerHTML = "";
+  liveOf("products").forEach(p => { const o = document.createElement("option"); o.value = p.name; dl.appendChild(o); });
+  if (pview === "pItems") renderItems(); else if (pview === "pStores") renderStores(); else renderList();
+}
+
+/* ---------- items ---------- */
+function renderItems() {
+  const q = $("itemSearch").value.trim().toLowerCase();
+  const box = $("itemList"); box.innerHTML = "";
+  const items = liveOf("products").filter(p => !q || p.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+  if (!items.length) { box.innerHTML = '<p class="note">' + t("noItems") + "</p>"; return; }
+  for (const p of items) {
+    const row = document.createElement("div"); row.className = "item";
+    row.appendChild(thumbEl(p.photo));
+    const l = document.createElement("div"); l.className = "l";
+    const tt = document.createElement("div"); tt.className = "t"; tt.textContent = p.name + (p.unit ? " · " + p.unit : "");
+    const s = document.createElement("div"); s.className = "s";
+    const c = cheapest(p.id);
+    s.textContent = c ? storeName(c.store) + " · " + shortDate(c.date) : t("noPriceYet");
+    l.append(tt, s);
+    const a = document.createElement("div"); a.className = "a"; a.textContent = c ? fmtPrice(c) : "";
+    row.append(l, a);
+    row.addEventListener("click", () => openProduct(p.id));
+    box.appendChild(row);
+  }
+  hydratePhotos(box);
+}
+$("itemSearch").addEventListener("input", renderItems);
+$("newItemBtn").addEventListener("click", () => {
+  const name = $("itemSearch").value.trim();
+  const rec = saveRec("products", { id: uid(), name: name || (lang === "ru" ? "Новый товар" : "New item"), unit: "", note: "", photo: null });
+  $("itemSearch").value = ""; renderItems(); openProduct(rec.id, true);
+});
+
+/* ---------- product sheet ---------- */
+let curProduct = null, pCurVal = "KGS", pPendingPhoto;
+function fillStoreSelect(sel, preferred) {
+  sel.innerHTML = "";
+  const ph = document.createElement("option"); ph.value = ""; ph.textContent = t("pickStore"); sel.appendChild(ph);
+  liveOf("stores").sort((a, b) => storeDist(a.id) - storeDist(b.id)).forEach(s => { const o = document.createElement("option"); o.value = s.id; o.textContent = s.name; sel.appendChild(o); });
+  if (preferred && px.stores[preferred]) sel.value = preferred;
+}
+function openProduct(id, focusName) {
+  const p = px.products[id]; if (!p) return;
+  curProduct = id; pPendingPhoto = undefined;
+  $("pName").value = p.name; $("pUnit").value = p.unit || ""; $("pNote").value = p.note || "";
+  bigPhoto($("pPhoto"), p.photo);
+  fillStoreSelect($("pStoreSel"), LS.get("lastStore", ""));
+  $("pAmt").value = ""; pCurVal = "KGS"; $("pCur").textContent = pCurVal;
+  const del = $("pDelete"); delete del.dataset.armed; del.textContent = t("deleteItem");
+  renderProductPrices();
+  $("productSheet").classList.add("open");
+  if (focusName) setTimeout(() => $("pName").select(), 50);
+}
+function renderProductPrices() {
+  const box = $("pPrices"); box.innerHTML = "";
+  const rows = latestByStore(curProduct);
+  if (!rows.length) { box.innerHTML = '<p class="note">' + t("noPrices") + "</p>"; return; }
+  rows.forEach((lp, i) => {
+    const wrap = document.createElement("div");
+    const row = document.createElement("div"); row.className = "pricerow";
+    const l = document.createElement("div"); l.className = "l";
+    l.textContent = storeName(lp.store) + " · " + shortDate(lp.date);
+    if (i === 0 && rows.length > 1) { const b = document.createElement("span"); b.className = "best"; b.textContent = "★ " + t("cheapest"); l.appendChild(b); }
+    const hist = historyFor(curProduct, lp.store);
+    const pr = document.createElement("div"); pr.className = "p"; pr.textContent = fmtPrice(lp);
+    row.append(l, pr);
+    wrap.appendChild(row);
+    if (hist.length > 1) {
+      const hb = document.createElement("button"); hb.className = "hist"; hb.textContent = t("history") + " (" + hist.length + ")";
+      const hl = document.createElement("div"); hl.className = "histlist"; hl.style.display = "none";
+      hl.textContent = hist.map(h => shortDate(h.date) + "  " + fmtPrice(h)).join("\n"); hl.style.whiteSpace = "pre-line";
+      hb.addEventListener("click", () => { hl.style.display = hl.style.display === "none" ? "block" : "none"; });
+      wrap.append(hb, hl);
+    }
+    box.appendChild(wrap);
+  });
+}
+$("pPhoto").addEventListener("click", () => pickPhoto(id => { pPendingPhoto = id; bigPhoto($("pPhoto"), id); }));
+$("pCur").addEventListener("click", () => { pCurVal = pCurVal === "KGS" ? "USD" : "KGS"; $("pCur").textContent = pCurVal; });
+function addPrice(productId, storeId, amt, cur) {
+  const now = new Date();
+  LS.set("lastStore", storeId);
+  return saveRec("prices", { id: uid(), product: productId, store: storeId, amt: Math.round(amt * 100) / 100, cur, date: localDate(now), ts: now.getTime(), person: me });
+}
+$("pSave").addEventListener("click", () => {
+  const p = px.products[curProduct]; if (!p) return;
+  const upd = Object.assign({}, p, { name: $("pName").value.trim() || p.name, unit: $("pUnit").value.trim(), note: $("pNote").value.trim() });
+  if (pPendingPhoto !== undefined) upd.photo = pPendingPhoto;
+  const changed = ["name", "unit", "note", "photo"].some(k => (upd[k] || "") !== (p[k] || ""));
+  if (changed) saveRec("products", upd);
+  const amt = parseFloat($("pAmt").value), st = $("pStoreSel").value;
+  if (amt > 0) {
+    if (!st) { toast(t("pickStore"), "trip"); return; }
+    addPrice(curProduct, st, amt, pCurVal);
+  }
+  toast(t("saved"));
+  $("productSheet").classList.remove("open"); curProduct = null; renderPrices();
+});
+$("pToList").addEventListener("click", () => { addToList(curProduct); toast(t("added")); });
+$("pClose").addEventListener("click", () => { $("productSheet").classList.remove("open"); curProduct = null; renderPrices(); });
+$("pDelete").addEventListener("click", () => {
+  const d = $("pDelete");
+  if (!d.dataset.armed) { d.dataset.armed = "1"; d.textContent = t("deleteConfirm"); return; }
+  const p = px.products[curProduct]; if (p) saveRec("products", Object.assign({}, p, { del: true }));
+  liveOf("list").filter(l => l.product === curProduct).forEach(l => saveRec("list", Object.assign({}, l, { del: true })));
+  $("productSheet").classList.remove("open"); curProduct = null; renderPrices();
+});
+$("productSheet").addEventListener("click", ev => { if (ev.target === $("productSheet")) $("pClose").click(); });
+
+/* ---------- stores ---------- */
+function renderStores() {
+  const box = $("storeList"); box.innerHTML = "";
+  const stores = liveOf("stores").sort((a, b) => (storeDist(a.id) - storeDist(b.id)) || a.name.localeCompare(b.name));
+  if (!stores.length) { box.innerHTML = '<p class="note">' + t("noStores") + "</p>"; return; }
+  for (const s of stores) {
+    const row = document.createElement("div"); row.className = "item";
+    row.appendChild(thumbEl(s.photo, "🏪"));
+    const l = document.createElement("div"); l.className = "l";
+    const tt = document.createElement("div"); tt.className = "t"; tt.textContent = s.name;
+    const sub = document.createElement("div"); sub.className = "s";
+    const n = new Set(liveOf("prices").filter(p => p.store === s.id && px.products[p.product] && !px.products[p.product].del).map(p => p.product)).size;
+    sub.textContent = (isFinite(storeDist(s.id)) ? storeDist(s.id) : t("noDist")) + " · " + n + " " + (lang === "ru" ? "тов." : "items") + (s.note ? " · " + s.note : "");
+    l.append(tt, sub);
+    row.appendChild(l);
+    row.addEventListener("click", () => openStore(s.id));
+    box.appendChild(row);
+  }
+  hydratePhotos(box);
+}
+let curStore = null, sPendingPhoto, sqCurVal = "KGS";
+$("newStoreBtn").addEventListener("click", () => {
+  const n = liveOf("stores").length;
+  const rec = saveRec("stores", { id: uid(), name: (lang === "ru" ? "Магазин " : "Store ") + (n + 1), dist: n + 1, note: "", photo: null });
+  renderStores(); openStore(rec.id, true);
+});
+function openStore(id, focusName) {
+  const s = px.stores[id]; if (!s) return;
+  curStore = id; sPendingPhoto = undefined;
+  $("sName").value = s.name; $("sDist").value = isFinite(storeDist(id)) ? s.dist : ""; $("sNote").value = s.note || "";
+  bigPhoto($("sPhoto"), s.photo);
+  $("sqName").value = ""; $("sqAmt").value = ""; sqCurVal = "KGS"; $("sqCur").textContent = sqCurVal;
+  const del = $("sDelete"); delete del.dataset.armed; del.textContent = t("deleteStore");
+  renderStorePrices();
+  $("storeSheet").classList.add("open");
+  if (focusName) setTimeout(() => $("sName").select(), 50);
+}
+function renderStorePrices() {
+  const box = $("sPrices"); box.innerHTML = "";
+  const latest = {};
+  for (const p of liveOf("prices").filter(p => p.store === curStore).sort((a, b) => b.ts - a.ts)) {
+    if (!latest[p.product] && px.products[p.product] && !px.products[p.product].del) latest[p.product] = p;
+  }
+  const rows = Object.values(latest).sort((a, b) => px.products[a.product].name.localeCompare(px.products[b.product].name));
+  if (!rows.length) { box.innerHTML = '<p class="note">' + t("noPrices") + "</p>"; return; }
+  for (const lp of rows) {
+    const row = document.createElement("div"); row.className = "pricerow";
+    const l = document.createElement("div"); l.className = "l"; l.textContent = px.products[lp.product].name + " · " + shortDate(lp.date);
+    const c = cheapest(lp.product);
+    if (c && c.id === lp.id && latestByStore(lp.product).length > 1) { const b = document.createElement("span"); b.className = "best"; b.textContent = "★"; l.appendChild(b); }
+    const pr = document.createElement("div"); pr.className = "p"; pr.textContent = fmtPrice(lp);
+    row.append(l, pr);
+    row.addEventListener("click", () => { $("storeSheet").classList.remove("open"); openProduct(lp.product); });
+    box.appendChild(row);
+  }
+}
+$("sPhoto").addEventListener("click", () => pickPhoto(id => { sPendingPhoto = id; bigPhoto($("sPhoto"), id); }));
+$("sqCur").addEventListener("click", () => { sqCurVal = sqCurVal === "KGS" ? "USD" : "KGS"; $("sqCur").textContent = sqCurVal; });
+function findOrCreateProduct(name) {
+  const n = name.trim(); if (!n) return null;
+  const hit = liveOf("products").find(p => p.name.toLowerCase() === n.toLowerCase());
+  if (hit) return hit.id;
+  return saveRec("products", { id: uid(), name: n, unit: "", note: "", photo: null }).id;
+}
+$("sqAdd").addEventListener("click", () => {
+  const amt = parseFloat($("sqAmt").value);
+  const pid = findOrCreateProduct($("sqName").value);
+  if (!pid || !(amt > 0)) return;
+  addPrice(pid, curStore, amt, sqCurVal);
+  $("sqName").value = ""; $("sqAmt").value = "";
+  renderStorePrices(); toast(t("saved"));
+  setTimeout(() => $("sqName").focus(), 50);
+});
+$("sSave").addEventListener("click", () => {
+  const s = px.stores[curStore]; if (!s) return;
+  const d = parseFloat($("sDist").value);
+  const upd = Object.assign({}, s, { name: $("sName").value.trim() || s.name, dist: isNaN(d) ? null : d, note: $("sNote").value.trim() });
+  if (sPendingPhoto !== undefined) upd.photo = sPendingPhoto;
+  if (["name", "dist", "note", "photo"].some(k => (upd[k] ?? "") !== (s[k] ?? ""))) saveRec("stores", upd);
+  $("storeSheet").classList.remove("open"); curStore = null; renderPrices();
+});
+$("sClose").addEventListener("click", () => { $("storeSheet").classList.remove("open"); curStore = null; renderPrices(); });
+$("sDelete").addEventListener("click", () => {
+  const d = $("sDelete");
+  if (!d.dataset.armed) { d.dataset.armed = "1"; d.textContent = t("deleteConfirm"); return; }
+  const s = px.stores[curStore]; if (s) saveRec("stores", Object.assign({}, s, { del: true }));
+  $("storeSheet").classList.remove("open"); curStore = null; renderPrices();
+});
+$("storeSheet").addEventListener("click", ev => { if (ev.target === $("storeSheet")) $("sClose").click(); });
+
+/* ---------- shopping list ---------- */
+function addToList(productId) {
+  if (!productId) return;
+  const have = liveOf("list").find(l => l.product === productId && !l.checked);
+  if (have) saveRec("list", Object.assign({}, have, { qty: (have.qty || 1) + 1 }));
+  else saveRec("list", { id: uid(), product: productId, qty: 1, checked: false });
+}
+function planList() {
+  // pick the cheapest store for each item, then group by store, closest first
+  const groups = {}, none = [];
+  for (const l of liveOf("list")) {
+    const p = px.products[l.product]; if (!p || p.del) continue;
+    const c = cheapest(l.product);
+    if (!c) { none.push({ l, p, c: null }); continue; }
+    (groups[c.store] = groups[c.store] || []).push({ l, p, c });
+  }
+  const order = Object.keys(groups).sort((a, b) => (storeDist(a) - storeDist(b)) || storeName(a).localeCompare(storeName(b)));
+  let total = 0, left = 0;
+  for (const s of order) for (const x of groups[s]) { const v = priceKGS(x.c) * (x.l.qty || 1); total += v; if (!x.l.checked) left += v; }
+  return { order, groups, none, total, left };
+}
+function renderList() {
+  const box = $("listPlan"); box.innerHTML = "";
+  const plan = planList();
+  if (!plan.order.length && !plan.none.length) { box.innerHTML = '<p class="note">' + t("listEmpty") + "</p>"; return; }
+  const line = x => {
+    const row = document.createElement("div"); row.className = "litem" + (x.l.checked ? " done" : "");
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!x.l.checked;
+    cb.addEventListener("change", () => { saveRec("list", Object.assign({}, x.l, { checked: cb.checked })); renderList(); });
+    const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = x.p.name;
+    if (x.p.unit) { const u = document.createElement("div"); u.className = "s"; u.style.cssText = "font-size:12px;color:var(--muted)"; u.textContent = x.p.unit; nm.appendChild(u); }
+    const q = document.createElement("div"); q.className = "qty";
+    const minus = document.createElement("button"); minus.textContent = "−";
+    const qv = document.createElement("span"); qv.textContent = "×" + (x.l.qty || 1);
+    const plus = document.createElement("button"); plus.textContent = "+";
+    minus.addEventListener("click", () => { const n = (x.l.qty || 1) - 1; saveRec("list", Object.assign({}, x.l, n < 1 ? { del: true } : { qty: n })); renderList(); });
+    plus.addEventListener("click", () => { saveRec("list", Object.assign({}, x.l, { qty: (x.l.qty || 1) + 1 })); renderList(); });
+    q.append(minus, qv, plus);
+    const pr = document.createElement("div"); pr.className = "p"; pr.style.fontWeight = "700";
+    pr.textContent = x.c ? fmtK(priceKGS(x.c) * (x.l.qty || 1)) : "—";
+    row.append(cb, nm, q, pr);
+    return row;
+  };
+  for (const sid of plan.order) {
+    const g = document.createElement("div"); g.className = "lgroup";
+    const h = document.createElement("h4"); h.textContent = storeName(sid) + (isFinite(storeDist(sid)) ? " · " + storeDist(sid) : "");
+    g.appendChild(h);
+    plan.groups[sid].sort((a, b) => a.p.name.localeCompare(b.p.name)).forEach(x => g.appendChild(line(x)));
+    box.appendChild(g);
+  }
+  if (plan.none.length) {
+    const g = document.createElement("div"); g.className = "lgroup";
+    const h = document.createElement("h4"); h.textContent = t("noPriceYet"); g.appendChild(h);
+    plan.none.forEach(x => g.appendChild(line(x)));
+    box.appendChild(g);
+  }
+  const tot = document.createElement("div"); tot.className = "total";
+  tot.innerHTML = "<span>" + t("expectedTotal") + "</span><span>" + fmtK(plan.total) + "</span>";
+  box.appendChild(tot);
+  if (plan.left !== plan.total) {
+    const lf = document.createElement("div"); lf.className = "note"; lf.style.textAlign = "right";
+    lf.textContent = t("remaining") + ": " + fmtK(plan.left); box.appendChild(lf);
+  }
+}
+$("listAddBtn").addEventListener("click", () => {
+  const name = $("listAdd").value.trim(); if (!name) return;
+  const known = liveOf("products").some(p => p.name.toLowerCase() === name.toLowerCase());
+  addToList(findOrCreateProduct(name));
+  if (!known) toast(t("unknownItem"));
+  $("listAdd").value = ""; renderPrices();
+});
+$("listAdd").addEventListener("keydown", e => { if (e.key === "Enter") $("listAddBtn").click(); });
+$("listClearChecked").addEventListener("click", () => { liveOf("list").filter(l => l.checked).forEach(l => saveRec("list", Object.assign({}, l, { del: true }))); renderList(); });
+$("listClearAll").addEventListener("click", () => {
+  const b = $("listClearAll");
+  if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = t("deleteConfirm"); setTimeout(() => { delete b.dataset.armed; b.textContent = t("clearList"); }, 3000); return; }
+  liveOf("list").forEach(l => saveRec("list", Object.assign({}, l, { del: true })));
+  delete b.dataset.armed; b.textContent = t("clearList"); renderList();
+});
+
+function buildPricesCSV(all) {
+  const rows = [["date", "item", "unit", "store", "price", "currency", "price_kgs", "recorded_by"]];
+  let list = liveOf("prices").filter(p => px.products[p.product] && !px.products[p.product].del && px.stores[p.store] && !px.stores[p.store].del);
+  if (!all) { const m = {}; list.sort((a, b) => b.ts - a.ts).forEach(p => { const k = p.product + "|" + p.store; if (!m[k]) m[k] = p; }); list = Object.values(m); }
+  list.sort((a, b) => px.products[a.product].name.localeCompare(px.products[b.product].name) || a.ts - b.ts);
+  list.forEach(p => rows.push([p.date, px.products[p.product].name, px.products[p.product].unit || "", storeName(p.store), p.amt.toFixed(2), p.cur, priceKGS(p).toFixed(0), p.person || ""]));
+  return rows.map(r => r.map(csvCell).join(",")).join("\n");
+}
+
+/* =====================================================================
    Boot
    ===================================================================== */
 function renderAll() {
@@ -997,6 +1558,7 @@ function renderAll() {
   if ($("recent").classList.contains("on")) renderRecent();
   if ($("summary").classList.contains("on")) renderSummary();
   if ($("settings").classList.contains("on")) renderSettings();
+  if ($("prices").classList.contains("on")) renderPrices();
 }
 renderPad(); renderAmount(); applyLang();
 window.addEventListener("hashchange", nextStep);
@@ -1004,7 +1566,7 @@ nextStep();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 
 // test hook (no secrets exposed beyond what this phone already stores)
-window.__rz = { syncNow, get entries() { return entries; }, get dirty() { return dirty; }, buildExport, buildCSV, computeSummary };
+window.__rz = { syncNow, get entries() { return entries; }, get dirty() { return dirty; }, get px() { return px; }, buildExport, buildCSV, computeSummary, planList };
 })();
 </script>
 </body>
