@@ -60,7 +60,7 @@
   .newcat{display:flex;gap:8px;margin-top:12px;align-items:center}
   .newcat input{flex:1}
   .newcat input.emo{flex:0 0 58px;text-align:center;font-size:22px}
-  #noteBtn{width:52px;height:52px;font-size:20px;flex:0 0 52px}
+  #noteBtn,#scanBtn{width:52px;height:52px;font-size:20px;flex:0 0 52px}
   #noteBtn.has{background:#1d3550;border-color:var(--accent)}
   .noteRow{display:none;margin:0 0 6px}
   .noteRow.open{display:flex}
@@ -69,7 +69,7 @@
   .pad button{font-size:26px;font-weight:600;min-height:0;height:100%}
   @media (max-height:620px){
     #amount{font-size:36px;min-height:46px;line-height:46px}
-    #curBtn,#noteBtn{height:44px}
+    #curBtn,#noteBtn,#scanBtn{height:44px}
     .ctile{height:52px;gap:0} .ctile .ce{font-size:19px;line-height:22px} .ctile .cl{font-size:10px;line-height:11px} .catpage{gap:5px}
     .pad{gap:5px} .pad button{font-size:22px}
     .saves button{height:50px}
@@ -185,6 +185,23 @@
   .poplist{margin:6px 0 0;padding:0;list-style:none;font-size:13px}
   .poplist li{display:flex;justify-content:space-between;gap:10px}
   .popbtn{margin-top:8px;width:100%;height:36px;border-radius:8px;border:none;background:#2b7cff;color:#fff;font-weight:600}
+  .buyhead{display:flex;gap:12px;align-items:center;margin-bottom:6px}
+  .scanimg{width:72px;height:72px;object-fit:cover;border-radius:10px;background:#262b33;flex:0 0 72px}
+  .haggle{background:#1b2230;border:1px solid #2c3a52;border-radius:12px;padding:10px 12px;margin:10px 0 4px;font-size:14px;line-height:1.45}
+  .haggle b{font-size:16px}
+  .haggle .say{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .haggle .say button{height:34px;padding:0 10px;font-size:13px;border-radius:17px}
+  .haggle .say button.big{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  .uprice{font-size:12px;color:var(--muted);font-weight:400}
+  .scrow{display:grid;grid-template-columns:28px 1fr 64px 84px;gap:6px;align-items:center;margin-top:6px}
+  .scrow input[type=checkbox]{width:24px;height:24px;accent-color:var(--living)}
+  .scrow input{min-width:0;padding:8px 6px;font-size:15px}
+  label.chk{display:flex;gap:10px;align-items:center;font-size:15px;margin-top:10px;color:var(--text)}
+  label.chk input{width:22px;height:22px}
+  #pMap .sharebtn{bottom:148px;font-size:22px;color:#111}
+  #pMap .sharebtn.on{background:#e85d9c;color:#fff}
+  .pin.person{background:#e85d9c;font:700 18px/38px system-ui;color:#fff;border-radius:50%}
+  .pinwrap.stale .pin.person{background:#9a7b8a}
   .total{display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin-top:14px;padding-top:10px;border-top:2px solid var(--line)}
   .addrow{display:flex;gap:8px;margin-top:8px}
   .addrow input{flex:1}
@@ -207,6 +224,7 @@
 <section class="view on" id="add">
   <div class="amountRow">
     <button id="noteBtn" aria-label="Note">✎</button>
+    <button id="scanBtn" aria-label="Scan">📷</button>
     <div id="amount" class="empty">0</div>
     <button id="curBtn">KGS</button>
   </div>
@@ -269,6 +287,7 @@
     <div id="walkBar" class="walkbar"><span id="walkText"></span><button id="walkClose" aria-label="close">✕</button></div>
     <button id="mapMe" class="mapbtn" aria-label="me">◎</button>
     <button id="recBtn" class="mapbtn recbtn" aria-label="record">●</button>
+    <button id="shareBtn" class="mapbtn sharebtn" aria-label="share">👥</button>
     <div id="modeBar" class="modebar"><div id="modeText"></div><div class="mbtns" id="modeBtns"></div></div>
   </div>
   <datalist id="productNames"></datalist>
@@ -294,6 +313,51 @@
   </div>
 </div>
 
+<!-- bought sheet: log a list item as an expense -->
+<div class="sheet" id="buySheet">
+  <div class="card">
+    <div class="buyhead"><div id="bThumb"></div><div><div class="popname" id="bName"></div><div class="note" id="bSub" style="margin:2px 0 0"></div></div></div>
+    <div id="bHaggle"></div>
+    <label data-i18n="paidLabel">Paid (total)</label>
+    <div class="addrow" style="margin-top:0">
+      <input id="bAmt" type="number" inputmode="decimal" step="0.01" min="0" style="flex:1;font-size:24px;font-weight:700">
+      <button id="bCur" style="flex:0 0 64px">KGS</button>
+    </div>
+    <div class="row" style="margin-top:8px;align-items:center;gap:10px">
+      <span class="note" style="margin:0" data-i18n="qtyLabel2">Quantity</span>
+      <div class="qty"><button id="bMinus">−</button><span id="bQty">×1</span><button id="bPlus">+</button></div>
+    </div>
+    <label data-i18n="storeName">Store / stall</label>
+    <select id="bStore"></select>
+    <label data-i18n="category">Category</label>
+    <select id="bCat"></select>
+    <div class="saves" style="margin-top:12px">
+      <button id="bLiving" data-i18n="logLiving">✓ LIVING</button>
+      <button id="bTrip" data-i18n="logTrip">✓ TRIP</button>
+    </div>
+    <div class="row">
+      <button id="bJust" data-i18n="justCross">Just cross off</button>
+      <button id="bCancel" data-i18n="cancel2">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- photo reading sheet -->
+<div class="sheet" id="scanSheet">
+  <div class="card">
+    <div class="buyhead"><img id="scanImg" class="scanimg" alt=""><div id="scanStatus" class="note" style="margin:0;flex:1"></div></div>
+    <div id="scanBody" style="display:none">
+      <label data-i18n="storeName">Store / stall</label>
+      <select id="scStore"></select>
+      <div id="scItems"></div>
+      <div class="row"><button id="scSave" class="primary" data-i18n="savePrices">Save checked prices</button></div>
+      <div class="row"><button id="scTotal"></button></div>
+    </div>
+    <div class="row"><button id="scClose" data-i18n="close">Close</button></div>
+  </div>
+</div>
+<input type="file" id="scanInput" accept="image/*" capture="environment" style="display:none">
+
 <!-- product sheet -->
 <div class="sheet" id="productSheet">
   <div class="card">
@@ -303,8 +367,11 @@
     <div class="row" style="margin-top:0">
       <div style="flex:1"><label data-i18n="unitLabel">Size / unit</label><input id="pUnit" autocomplete="off" data-i18n-ph="unitPh"></div>
     </div>
+    <label data-i18n="kindLabel">Compare as (type)</label>
+    <input id="pKind" autocomplete="off" data-i18n-ph="kindPh">
     <label data-i18n="noteLabel">Note</label>
     <input id="pNote" autocomplete="off">
+    <div id="pHaggle"></div>
     <h3 data-i18n="pricesByStore">Prices by store</h3>
     <div id="pPrices"></div>
     <label data-i18n="addPrice">Add / update a price</label>
@@ -342,7 +409,7 @@
       <input id="sqAmt" type="number" inputmode="decimal" step="0.01" min="0" style="flex:1">
       <button id="sqCur" style="flex:0 0 64px">KGS</button>
     </div>
-    <div class="row" style="margin-top:6px"><button id="sqAdd" data-i18n="addPriceBtn">Add price</button></div>
+    <div class="row" style="margin-top:6px"><button id="sqAdd" data-i18n="addPriceBtn">Add price</button><button id="sqScan" data-i18n="scanHere">📷 Read prices from photo</button></div>
     <div class="row">
       <button id="sSave" class="primary" data-i18n="save">Save</button>
       <button id="sClose" data-i18n="close">Close</button>
@@ -367,6 +434,15 @@
       <button id="rateSave" class="primary" style="flex:0 0 96px" data-i18n="save">Save</button>
     </div>
     <p class="note" data-i18n="rateNote">Applied to every entry, on both phones.</p>
+    <label class="chk"><input type="checkbox" id="autoRate"> <span data-i18n="autoRate">Update it automatically once a day (when online)</span></label>
+    <p class="note" id="rateSrc"></p>
+
+    <label data-i18n="claudeKeyLabel">Claude API key — reads price tags and receipts</label>
+    <div class="row" style="margin-top:0">
+      <input id="claudeKey" type="password" autocomplete="off" placeholder="sk-ant-…">
+      <button id="claudeKeySave" class="primary" style="flex:0 0 96px" data-i18n="save">Save</button>
+    </div>
+    <p class="note" id="claudeKeyNote"></p>
 
     <label data-i18n="langLabel">Language</label>
     <div class="seg" id="langSeg">
@@ -612,6 +688,17 @@ const T = {
     junction:"📍 Junction", stopSave:"■ Save", discard:"Discard", pathSaved:"Path saved — walking routes use it now.", pathTooShort:"Too short to save — walk at least 15 m.",
     recWeak:"GPS is weak here (±{acc} m) — points this rough are skipped.", pathPop:"Your path · {m} m · {date} · {who}", editPts:"✎ Edit points", delPath:"Delete path",
     editHelp:"Drag points to where the path really is, then tap Done. Red = junction.", pathDeleted:"Path deleted.", keepAwake:"Keep the screen on while recording.",
+    kindLabel:"Compare as (type)", kindPh:"e.g. cat food, rice, coffee", paidLabel:"Paid (total)", qtyLabel2:"Quantity",
+    logLiving:"✓ LIVING", logTrip:"✓ TRIP", justCross:"Just cross off", loggedAs:"Logged: {amt}", undoLog:"Also delete the {amt} expense that was logged for this?",
+    hBest:"Best price elsewhere: <b>{p}</b> at {s} ({d})", hNoBest:"No price elsewhere yet — nothing to compare.", hHere:"Last price here: {p} ({d})",
+    hWalk:"Walk away above <b>{p}</b>.", hOpen:"Open at about <b>{p}</b>.", saySom:"{n} сом", sayHow:"Сколько стоит?", sayLast:"Последняя цена?", sayDear:"Дорого", sayOffer:"Давайте за {n}?",
+    hNewStall:"At a new stall? Best known price: <b>{p}</b> at {s}.", perKg:"/kg", perL:"/l", perPc:"/pc",
+    scanHere:"📷 Read prices from photo", scanReading:"Reading the photo…", scanNoKey:"Add your Claude API key in Settings to read photos.", scanFail:"Couldn't read it: {e}",
+    scanNone:"No prices found in this photo.", savePrices:"Save checked prices", useTotal:"Use total {t} as an expense", usePrice:"Use {t} as an expense",
+    pricesSaved:"{n} prices saved.", newStoreOpt:"＋ New store: {n}", scanFound:"Found {n} — check and fix before saving.", needOnline:"Needs internet.",
+    autoRate:"Update it automatically once a day (when online)", rateAuto:"Updated automatically {d} ({src}).", rateManual:"Set by hand — automatic updates are off.",
+    claudeKeyLabel:"Claude API key — reads price tags and receipts", keyFromSlovo:"Using the key from Slovo Listen.", keySaved:"Saved on this phone only.", keyNone:"Not set. Sveta's phone needs its own key.",
+    shareOn:"Sharing your location with {p} while Map is open.", shareOff:"Location sharing off.", seenAgo:"{p} · {m} min ago", seenNow:"{p} · just now", walkToThem:"🚶 Walk to {p}", awayM:"{d} away",
     pMap:"Map", mapDownloading:"Saving the Bishkek map to this phone for offline use… {p}% (9 MB, one time)",
     mapNeedsNet:"The map downloads once (9 MB). Connect to the internet and open Map again — after that it works offline.",
     homeLabel:"Home", openStore:"Open store", onList:"From your list:", fromYou:"from you", fromHomeShort:"from home",
@@ -671,6 +758,17 @@ const T = {
     junction:"📍 Перекрёсток", stopSave:"■ Сохранить", discard:"Удалить", pathSaved:"Путь сохранён — маршруты уже его используют.", pathTooShort:"Слишком коротко — пройдите хотя бы 15 м.",
     recWeak:"Слабый GPS (±{acc} м) — такие неточные точки пропускаются.", pathPop:"Ваш путь · {m} м · {date} · {who}", editPts:"✎ Править точки", delPath:"Удалить путь",
     editHelp:"Перетащите точки туда, где путь на самом деле, и нажмите «Готово». Красные = перекрёстки.", pathDeleted:"Путь удалён.", keepAwake:"Не выключайте экран во время записи.",
+    kindLabel:"Сравнивать как (тип)", kindPh:"напр. корм для кошек, рис, кофе", paidLabel:"Заплатили (всего)", qtyLabel2:"Количество",
+    logLiving:"✓ ЖИЗНЬ", logTrip:"✓ ПОЕЗДКА", justCross:"Просто вычеркнуть", loggedAs:"Записано: {amt}", undoLog:"Удалить и расход {amt}, записанный для этого товара?",
+    hBest:"Лучшая цена в другом месте: <b>{p}</b>, {s} ({d})", hNoBest:"В других местах цен пока нет — сравнить не с чем.", hHere:"Последняя цена здесь: {p} ({d})",
+    hWalk:"Дороже <b>{p}</b> — уходите.", hOpen:"Начните примерно с <b>{p}</b>.", saySom:"{n} сом", sayHow:"Сколько стоит?", sayLast:"Последняя цена?", sayDear:"Дорого", sayOffer:"Давайте за {n}?",
+    hNewStall:"Новая точка? Лучшая известная цена: <b>{p}</b>, {s}.", perKg:"/кг", perL:"/л", perPc:"/шт",
+    scanHere:"📷 Прочитать цены с фото", scanReading:"Читаю фото…", scanNoKey:"Добавьте ключ Claude API в настройках, чтобы читать фото.", scanFail:"Не удалось прочитать: {e}",
+    scanNone:"На фото не найдено цен.", savePrices:"Сохранить отмеченные цены", useTotal:"Записать итог {t} как расход", usePrice:"Записать {t} как расход",
+    pricesSaved:"Сохранено цен: {n}.", newStoreOpt:"＋ Новый магазин: {n}", scanFound:"Найдено: {n} — проверьте и исправьте перед сохранением.", needOnline:"Нужен интернет.",
+    autoRate:"Обновлять автоматически раз в день (при интернете)", rateAuto:"Обновлено автоматически {d} ({src}).", rateManual:"Задан вручную — автообновление выключено.",
+    claudeKeyLabel:"Ключ Claude API — читает ценники и чеки", keyFromSlovo:"Используется ключ из Slovo Listen.", keySaved:"Сохранён только на этом телефоне.", keyNone:"Не задан. Телефону Светы нужен свой ключ.",
+    shareOn:"Ваше место видно: {p}, пока открыта «Карта».", shareOff:"Показ места выключен.", seenAgo:"{p} · {m} мин назад", seenNow:"{p} · сейчас", walkToThem:"🚶 Пешком к: {p}", awayM:"{d} отсюда",
     pMap:"Карта", mapDownloading:"Сохраняю карту Бишкека на телефон для работы без сети… {p}% (9 МБ, один раз)",
     mapNeedsNet:"Карта скачивается один раз (9 МБ). Подключитесь к интернету и откройте «Карту» снова — дальше она работает без сети.",
     homeLabel:"Дом", openStore:"Открыть магазин", onList:"Из списка:", fromYou:"от вас", fromHomeShort:"от дома",
@@ -1140,6 +1238,11 @@ function renderSettings() {
   $("localBox").style.display = local ? "block" : "none";
   $("sharedBox").style.display = local ? "none" : "block";
   if (document.activeElement !== $("rateInput")) $("rateInput").value = rate();
+  $("autoRate").checked = LS.get("autoRate", true);
+  $("rateSrc").textContent = shared.src ? t("rateAuto", { d: shared.day || "", src: shared.src }) : (LS.get("autoRate", true) ? "" : t("rateManual"));
+  const ck = claudeKey();
+  $("claudeKeyNote").textContent = !ck ? t("keyNone") : ck.src === "slovo" ? t("keyFromSlovo") : t("keySaved");
+  $("claudeKey").placeholder = ck && ck.src === "own" ? "•••• " + ck.k.slice(-4) : "sk-ant-…";
   document.querySelectorAll("[data-me]").forEach(b => b.classList.toggle("sel", b.dataset.me === me));
   if (!local) $("syncDetail").textContent = (cfg ? cfg.repo + " · " : "") + t("synced") + ": " +
     (lastSync ? new Date(lastSync).toLocaleString(lang === "ru" ? "ru-RU" : "en-US") : t("never"));
@@ -1148,9 +1251,26 @@ $("rateSave").addEventListener("click", () => {
   const v = parseFloat($("rateInput").value);
   if (!(v > 0)) return;
   shared = { rate: Math.round(v * 10000) / 10000, upd: Date.now(), by: me };
+  LS.set("autoRate", false);                 // a rate set by hand wins until you turn automatic back on
   dirty = true; persist(); renderAll(); scheduleSync(200);
   toast(t("rateSaved"));
 });
+$("autoRate").addEventListener("change", () => { LS.set("autoRate", $("autoRate").checked); if ($("autoRate").checked) autoRateCheck(true); renderSettings(); });
+$("claudeKeySave").addEventListener("click", () => { LS.set("claudeKey", $("claudeKey").value.trim()); $("claudeKey").value = ""; toast(t("saved")); renderSettings(); });
+// official-ish market rate, at most once a day; both phones share whichever updated first
+async function autoRateCheck(force) {
+  if (!LS.get("autoRate", true) || navigator.onLine === false) return;
+  const today = localDate(new Date());
+  if (!force && shared.src && shared.day === today) return;
+  let v = null, src = "";
+  try { const r = await fetch("https://open.er-api.com/v6/latest/USD", { cache: "no-store" }); const j = await r.json(); v = j && j.rates && j.rates.KGS; src = "open.er-api.com"; } catch (e) {}
+  if (!(v > 50 && v < 200)) {
+    try { const r = await fetch("https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json", { cache: "no-store" }); const j = await r.json(); v = j && j.usd && j.usd.kgs; src = "currency-api"; } catch (e) {}
+  }
+  if (!(v > 50 && v < 200)) return;
+  shared = { rate: Math.round(v * 100) / 100, upd: Date.now(), by: me, src, day: today };
+  dirty = true; persist(); renderAll(); scheduleSync(500);
+}
 document.querySelectorAll("[data-me]").forEach(b => b.addEventListener("click", () => { me = b.dataset.me; LS.set("me", me); renderAll(); }));
 $("syncNow").addEventListener("click", () => scheduleSync(0));
 
@@ -1383,6 +1503,24 @@ function latestByStore(productId) {
   return Object.values(m).sort((a, b) => (priceKGS(a) - priceKGS(b)) || (storeDist(a.store) - storeDist(b.store)));
 }
 function cheapest(productId) { return latestByStore(productId)[0] || null; }
+// "85 g", "1,5 л", "6 x 85 г", "10 шт" → {q: amount in kg / l / pieces, base}
+function parseSize(txt) {
+  if (!txt) return null;
+  const s = String(txt).toLowerCase().replace(",", ".");
+  const m = s.match(/(?:(\d+)\s*[x×х*]\s*)?(\d+(?:\.\d+)?)\s*(kg|кг|g|gr|г|гр|l|л|ml|мл|pcs|pc|шт|piece|pieces)(?![a-zа-я])/);
+  if (!m) return null;
+  const mult = m[1] ? +m[1] : 1, v = +m[2] * mult, u = m[3];
+  if (/^(kg|кг)$/.test(u)) return { q: v, base: "kg" };
+  if (/^(g|gr|г|гр)$/.test(u)) return { q: v / 1000, base: "kg" };
+  if (/^(l|л)$/.test(u)) return { q: v, base: "l" };
+  if (/^(ml|мл)$/.test(u)) return { q: v / 1000, base: "l" };
+  return { q: v, base: "pc" };
+}
+function unitPrice(prod, pr) {          // som per kg / l / piece, or null
+  const z = parseSize(prod && prod.unit); if (!z || !(z.q > 0) || !pr) return null;
+  return { v: priceKGS(pr) / z.q, base: z.base };
+}
+function fmtUnit(u) { return u ? fmtK(u.v) + t(u.base === "kg" ? "perKg" : u.base === "l" ? "perL" : "perPc") : ""; }
 function shortDate(d) { return d ? d.slice(5) : ""; }
 
 /* ---------- GPS: store locations, home, shortest route ---------- */
@@ -1801,7 +1939,11 @@ function renderPrices() {
 function renderItems() {
   const q = $("itemSearch").value.trim().toLowerCase();
   const box = $("itemList"); box.innerHTML = "";
-  const items = liveOf("products").filter(p => !q || p.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+  let items = liveOf("products").filter(p => !q || (p.name + " " + (p.kind || "") + " " + (p.note || "")).toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+  if (q) {                                    // searching = comparing: cheapest per kg / l first
+    const up = p => { const u = unitPrice(p, cheapest(p.id)); return u ? u.v : Infinity; };
+    items = items.sort((a, b) => (up(a) - up(b)) || a.name.localeCompare(b.name));
+  }
   if (!items.length) { box.innerHTML = '<p class="note">' + t("noItems") + "</p>"; return; }
   for (const p of items) {
     const row = document.createElement("div"); row.className = "item";
@@ -1813,6 +1955,7 @@ function renderItems() {
     s.textContent = c ? storeName(c.store) + " · " + shortDate(c.date) : t("noPriceYet");
     l.append(tt, s);
     const a = document.createElement("div"); a.className = "a"; a.textContent = c ? fmtPrice(c) : "";
+    const u = unitPrice(p, c); if (u) { const us = document.createElement("div"); us.className = "uprice"; us.textContent = fmtUnit(u); a.appendChild(us); }
     row.append(l, a);
     row.addEventListener("click", () => openProduct(p.id));
     box.appendChild(row);
@@ -1837,7 +1980,8 @@ function fillStoreSelect(sel, preferred) {
 function openProduct(id, focusName) {
   const p = px.products[id]; if (!p) return;
   curProduct = id; pPendingPhoto = undefined;
-  $("pName").value = p.name; $("pUnit").value = p.unit || ""; $("pNote").value = p.note || "";
+  $("pName").value = p.name; $("pUnit").value = p.unit || ""; $("pNote").value = p.note || ""; $("pKind").value = p.kind || "";
+  renderHaggle($("pHaggle"), id, null, 1);
   bigPhoto($("pPhoto"), p.photo);
   fillStoreSelect($("pStoreSel"), LS.get("lastStore", ""));
   $("pAmt").value = ""; pCurVal = "KGS"; $("pCur").textContent = pCurVal;
@@ -1858,6 +2002,7 @@ function renderProductPrices() {
     if (i === 0 && rows.length > 1) { const b = document.createElement("span"); b.className = "best"; b.textContent = "★ " + t("cheapest"); l.appendChild(b); }
     const hist = historyFor(curProduct, lp.store);
     const pr = document.createElement("div"); pr.className = "p"; pr.textContent = fmtPrice(lp);
+    { const u = unitPrice(px.products[curProduct], lp); if (u) { const us = document.createElement("div"); us.className = "uprice"; us.style.textAlign = "right"; us.textContent = fmtUnit(u); pr.appendChild(us); } }
     row.append(l, pr);
     wrap.appendChild(row);
     if (hist.length > 1) {
@@ -1879,9 +2024,9 @@ function addPrice(productId, storeId, amt, cur) {
 }
 $("pSave").addEventListener("click", () => {
   const p = px.products[curProduct]; if (!p) return;
-  const upd = Object.assign({}, p, { name: $("pName").value.trim() || p.name, unit: $("pUnit").value.trim(), note: $("pNote").value.trim() });
+  const upd = Object.assign({}, p, { name: $("pName").value.trim() || p.name, unit: $("pUnit").value.trim(), note: $("pNote").value.trim(), kind: $("pKind").value.trim() });
   if (pPendingPhoto !== undefined) upd.photo = pPendingPhoto;
-  const changed = ["name", "unit", "note", "photo"].some(k => (upd[k] || "") !== (p[k] || ""));
+  const changed = ["name", "unit", "note", "photo", "kind"].some(k => (upd[k] || "") !== (p[k] || ""));
   if (changed) saveRec("products", upd);
   const amt = parseFloat($("pAmt").value), st = $("pStoreSel").value;
   if (amt > 0) {
@@ -2060,7 +2205,10 @@ function planList() {
     route.partial = gps.length < Object.keys(groups).length;
   }
   let total = 0, left = 0;
-  for (const s of order) for (const x of groups[s]) { const v = priceKGS(x.c) * (x.l.qty || 1); total += v; if (!x.l.checked) left += v; }
+  for (const x of Object.values(groups).flat().concat(none)) {
+    const v = x.l.checked && x.l.paid != null ? paidKGS(x.l) : x.c ? priceKGS(x.c) * (x.l.qty || 1) : 0;
+    total += v; if (!x.l.checked) left += v;
+  }
   return { order, groups, none, total, left, route };
 }
 function renderList() {
@@ -2074,8 +2222,12 @@ function renderList() {
   const line = x => {
     const row = document.createElement("div"); row.className = "litem" + (x.l.checked ? " done" : "");
     const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!x.l.checked;
-    cb.addEventListener("change", () => { saveRec("list", Object.assign({}, x.l, { checked: cb.checked })); renderList(); });
+    cb.addEventListener("change", () => {
+      if (cb.checked) { cb.checked = false; openBuy(x.l.id); return; }
+      uncheckItem(x.l.id); renderList();
+    });
     const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = x.p.name;
+    nm.addEventListener("click", () => openProduct(x.p.id));
     if (x.p.unit) { const u = document.createElement("div"); u.className = "s"; u.style.cssText = "font-size:12px;color:var(--muted)"; u.textContent = x.p.unit; nm.appendChild(u); }
     const q = document.createElement("div"); q.className = "qty";
     const minus = document.createElement("button"); minus.textContent = "−";
@@ -2085,7 +2237,7 @@ function renderList() {
     plus.addEventListener("click", () => { saveRec("list", Object.assign({}, x.l, { qty: (x.l.qty || 1) + 1 })); renderList(); });
     q.append(minus, qv, plus);
     const pr = document.createElement("div"); pr.className = "p"; pr.style.fontWeight = "700";
-    pr.textContent = x.c ? fmtK(priceKGS(x.c) * (x.l.qty || 1)) : "—";
+    pr.textContent = x.l.checked && x.l.paid != null ? "✓ " + fmtK(paidKGS(x.l)) : x.c ? fmtK(priceKGS(x.c) * (x.l.qty || 1)) : "—";
     row.append(cb, nm, q, pr);
     return row;
   };
@@ -2182,6 +2334,7 @@ async function openMap() {
     if (!walkG) ensureWalk(true).then(g => { if (g) drawPins(true); });
     drawPins();
     startWatch();
+    startLive();
   } finally { mapOpening = false; }
 }
 function pinIcon(inner, cls, badge) {
@@ -2272,23 +2425,85 @@ function startWatch() {
   if (watchId != null || !navigator.geolocation || !map) return;
   watchId = navigator.geolocation.watchPosition(p => {
     const ll = [p.coords.latitude, p.coords.longitude], acc = p.coords.accuracy || 30;
-    lastMe = { lat: ll[0], lng: ll[1] };
+    lastMe = { lat: ll[0], lng: ll[1], acc: Math.round(acc) };
     if (!meMarker) {
       meCircle = L.circle(ll, { radius: acc, color: "#2b7cff", weight: 1, fillOpacity: .12, interactive: false }).addTo(map);
       meMarker = L.circleMarker(ll, { radius: 8, color: "#fff", weight: 3, fillColor: "#2b7cff", fillOpacity: 1, interactive: false }).addTo(map);
     } else { meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(acc); }
   }, () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
 }
-function stopWatch() { if (rec) return; if (watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(watchId); watchId = null; }
+function stopWatch() { if (rec) return; stopLive(); if (watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(watchId); watchId = null; }
+
+/* ---------- see each other: while Map is open, each phone posts its spot to live/<name>.json in the private data repo ---------- */
+let shareOn = LS.get("shareLoc", false), liveTimer = null, livePushAt = 0, livePushPos = null, liveSha = null, liveEtag = "", otherLive = null, otherMarker = null;
+function otherPerson() { return PEOPLE.find(p => p !== me); }
+function liveUrl(p) { return API + "/repos/" + cfg.repo + "/contents/live/" + p.toLowerCase() + ".json"; }
+async function livePut(obj) {
+  const body = { message: "rashody live " + me, content: b64encodeUtf8(JSON.stringify(obj)) };
+  for (let i = 0; i < 2; i++) {
+    if (liveSha) body.sha = liveSha; else delete body.sha;
+    const r = await fetch(liveUrl(me), { method: "PUT", headers: ghHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body), cache: "no-store" });
+    if (r.ok) { const j = await r.json(); liveSha = j.content && j.content.sha; return true; }
+    if (r.status === 409 || r.status === 422) { const g = await fetch(liveUrl(me), { headers: ghHeaders(), cache: "no-store" }); liveSha = g.ok ? (await g.json()).sha : null; continue; }
+    return false;
+  }
+  return false;
+}
+async function livePush(force) {
+  if (!cfg || cfg.local || !shareOn || !lastMe || navigator.onLine === false) return;
+  const now = Date.now();
+  if (!force && livePushPos && km(livePushPos, lastMe) * 1000 < 10 && now - livePushAt < 60000) return;
+  if (await livePut({ lat: +lastMe.lat.toFixed(6), lng: +lastMe.lng.toFixed(6), acc: lastMe.acc || null, ts: now, on: true })) { livePushAt = now; livePushPos = Object.assign({}, lastMe); }
+}
+async function livePull() {
+  if (!cfg || cfg.local || navigator.onLine === false) return;
+  try {
+    const r = await fetch(liveUrl(otherPerson()), { headers: liveEtag ? ghHeaders({ "If-None-Match": liveEtag }) : ghHeaders(), cache: "no-store" });
+    if (r.ok) { liveEtag = r.headers.get("ETag") || ""; const j = await r.json(); otherLive = JSON.parse(b64decodeUtf8(j.content || "") || "null"); }
+  } catch (e) {}
+  drawOther();
+}
+function drawOther() {
+  if (!map) return;
+  const o = otherLive, age = o && o.ts ? (Date.now() - o.ts) / 60000 : 1e9;
+  if (!o || !o.on || !(o.lat) || age > 30) { if (otherMarker) { otherMarker.remove(); otherMarker = null; } return; }
+  const name = otherPerson();
+  const icon = L.divIcon({ className: "", iconSize: [44, 44], iconAnchor: [22, 22], popupAnchor: [0, -24],
+    html: '<div class="pinwrap' + (age > 5 ? " stale" : "") + '"><div class="pin person">' + esc(name[0]) + "</div></div>" });
+  if (!otherMarker) {
+    otherMarker = L.marker([o.lat, o.lng], { icon, zIndexOffset: 900 }).addTo(map);
+    otherMarker.bindPopup(() => {
+      const d = document.createElement("div"), x = otherLive, m = Math.round((Date.now() - x.ts) / 60000);
+      const n = document.createElement("div"); n.className = "popname"; n.textContent = m < 1 ? t("seenNow", { p: name }) : t("seenAgo", { p: name, m }); d.appendChild(n);
+      if (lastMe) { const s = document.createElement("div"); s.className = "popsub"; s.textContent = t("awayM", { d: fmtKm(km(lastMe, x)) }); d.appendChild(s); }
+      const b = document.createElement("button"); b.className = "popbtn walkbtn"; b.textContent = t("walkToThem", { p: name });
+      b.addEventListener("click", () => { map.closePopup(); walkTo({ name, lat: x.lat, lng: x.lng }); }); d.appendChild(b);
+      return d;
+    }, { maxWidth: 240 });
+  } else { otherMarker.setLatLng([o.lat, o.lng]); otherMarker.setIcon(icon); }
+}
+function startLive() {
+  if (!cfg || cfg.local) { $("shareBtn").style.display = "none"; return; }
+  $("shareBtn").classList.toggle("on", shareOn);
+  if (liveTimer) return;
+  const tick = () => { livePull(); livePush(false); };
+  tick(); liveTimer = setInterval(tick, window.__liveMs || 15000);
+}
+function stopLive() { if (liveTimer) { clearInterval(liveTimer); liveTimer = null; } }
+$("shareBtn").addEventListener("click", async () => {
+  shareOn = !shareOn; LS.set("shareLoc", shareOn); $("shareBtn").classList.toggle("on", shareOn);
+  toast(shareOn ? t("shareOn", { p: otherPerson() }) : t("shareOff"));
+  if (shareOn) livePush(true); else livePut({ on: false, ts: Date.now() });
+});
 
 /* ---------- map modes: move a pin, record a path, edit a path ---------- */
 let mapMode = null, pinMarkers = {}, pathLayer = null;
 function modeBar(text, buttons) {
   $("modeText").innerHTML = text; const b = $("modeBtns"); b.innerHTML = "";
   for (const [label, cls, fn] of buttons) { const x = document.createElement("button"); x.textContent = label; if (cls) x.className = cls; x.addEventListener("click", fn); b.appendChild(x); }
-  $("modeBar").style.display = "block"; $("recBtn").style.display = "none"; $("mapMe").style.bottom = ($("modeBar").offsetHeight + 40) + "px";
+  $("modeBar").style.display = "block"; $("recBtn").style.display = "none"; $("shareBtn").style.visibility = "hidden"; $("mapMe").style.bottom = ($("modeBar").offsetHeight + 40) + "px";
 }
-function endMode() { mapMode = null; $("modeBar").style.display = "none"; $("recBtn").style.display = ""; $("mapMe").style.bottom = ""; pinSig = ""; drawPins(true); }
+function endMode() { mapMode = null; $("modeBar").style.display = "none"; $("recBtn").style.display = ""; $("shareBtn").style.visibility = ""; $("mapMe").style.bottom = ""; pinSig = ""; drawPins(true); }
 function startMovePin(id) {
   const m = pinMarkers[id], s = px.stores[id]; if (!m || !s) return;
   mapMode = "move"; m.dragging.enable(); map.setView(m.getLatLng(), Math.max(map.getZoom(), 18));
@@ -2444,6 +2659,228 @@ $("mapMe").addEventListener("click", () => {
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopWatch(); else if ($("prices").classList.contains("on") && pview === "pMap") startWatch(); });
 document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => { if (b.dataset.view !== "prices") stopWatch(); else if (pview === "pMap") setTimeout(openMap, 0); }));
 
+
+/* ---------- bought: checking an item logs the expense and the price paid ---------- */
+function paidKGS(l) { return l.paidCur === "USD" ? l.paid * rate() : l.paid; }
+function niceRound(v) { const step = v >= 1000 ? 50 : v >= 200 ? 10 : v >= 40 ? 5 : 1; return Math.max(step, Math.floor(v / step) * step); }
+function speakRu(text) {
+  try { const u = new SpeechSynthesisUtterance(text); u.lang = "ru-RU"; u.rate = 0.85;
+    const v = speechSynthesis.getVoices().find(v => /^ru/i.test(v.lang)); if (v) u.voice = v;
+    speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+}
+// what you know before you haggle: best price elsewhere (your walk-away point), the last price here, an opening offer
+function haggleInfo(productId, storeId, qty) {
+  qty = qty || 1;
+  const all = latestByStore(productId);
+  const elsewhere = all.filter(p => p.store !== storeId)[0] || null;
+  const here = storeId ? all.find(p => p.store === storeId) || null : null;
+  const known = [elsewhere, here].filter(Boolean).map(priceKGS);
+  const ref = known.length ? Math.min(...known) * qty : null;
+  return { elsewhere, here, walk: elsewhere ? priceKGS(elsewhere) * qty : null, open: ref ? niceRound(ref * 0.8) : null };
+}
+function renderHaggle(box, productId, storeId, qty) {
+  box.innerHTML = "";
+  if (!productId) return;
+  const H = haggleInfo(productId, storeId, qty);
+  if (!H.elsewhere && !H.here) return;
+  const d = document.createElement("div"); d.className = "haggle";
+  const lines = [];
+  if (!storeId) { const c = H.elsewhere; lines.push(t("hNewStall", { p: fmtK(priceKGS(c) * (qty || 1)), s: esc(storeName(c.store)) })); }
+  else {
+    lines.push(H.elsewhere ? t("hBest", { p: fmtK(H.walk), s: esc(storeName(H.elsewhere.store)), d: shortDate(H.elsewhere.date) }) : t("hNoBest"));
+    if (H.here) lines.push(t("hHere", { p: fmtK(priceKGS(H.here) * (qty || 1)), d: shortDate(H.here.date) }));
+    if (H.walk) lines.push(t("hWalk", { p: fmtK(H.walk) }));
+  }
+  if (H.open) lines.push(t("hOpen", { p: fmtK(H.open) }));
+  d.innerHTML = "🤝 " + lines.join("<br>");
+  const say = document.createElement("div"); say.className = "say";
+  const chip = (label, text, big) => { const b = document.createElement("button"); b.textContent = "🔊 " + label; if (big) b.className = "big"; b.addEventListener("click", ev => { ev.preventDefault(); speakRu(text); }); say.appendChild(b); };
+  chip(t("sayHow"), "Сколько стоит?");
+  if (H.open) chip(t("sayOffer", { n: H.open }), "Давайте за " + H.open + " сом?", true);
+  chip(t("sayLast"), "Последняя цена?");
+  chip(t("sayDear"), "Дорого.");
+  d.appendChild(say);
+  box.appendChild(d);
+}
+let buyItem = null, bCurVal = "KGS", bQtyVal = 1;
+function fillCatSelect(sel, v) {
+  sel.innerHTML = "";
+  sortedCats().forEach(c => { const o = document.createElement("option"); o.value = c.k; o.textContent = c.e + " " + (lang === "ru" ? c.ru : c.en); sel.appendChild(o); });
+  sel.value = v && catOf(v) ? v : "Groceries";
+}
+function buyExpected() {
+  const l = px.list[buyItem], st = $("bStore").value;
+  const lp = st ? latestByStore(l.product).find(p => p.store === st) : null, c = lp || cheapest(l.product);
+  return c ? Math.round(priceKGS(c) * bQtyVal) : null;
+}
+function openBuy(listId) {
+  const l = px.list[listId]; if (!l) return; const p = px.products[l.product]; if (!p) return;
+  buyItem = listId; bQtyVal = l.qty || 1; bCurVal = "KGS";
+  const c = cheapest(l.product);
+  $("bName").textContent = p.name; $("bSub").textContent = p.unit || "";
+  const th = $("bThumb"); th.innerHTML = ""; th.appendChild(thumbEl(p.photo)); hydratePhotos(th);
+  fillStoreSelect($("bStore"), c ? c.store : LS.get("lastStore", ""));
+  fillCatSelect($("bCat"), p.cat);
+  $("bQty").textContent = "×" + bQtyVal; $("bCur").textContent = bCurVal;
+  const ex = buyExpected(); $("bAmt").value = ex != null ? ex : "";
+  renderHaggle($("bHaggle"), l.product, $("bStore").value || null, bQtyVal);
+  $("buySheet").classList.add("open");
+}
+function buyRefresh(keepAmt) {
+  const l = px.list[buyItem]; if (!l) return;
+  $("bQty").textContent = "×" + bQtyVal;
+  if (!keepAmt) { const ex = buyExpected(); if (ex != null && bCurVal === "KGS") $("bAmt").value = ex; }
+  renderHaggle($("bHaggle"), l.product, $("bStore").value || null, bQtyVal);
+}
+$("bStore").addEventListener("change", () => buyRefresh(false));
+$("bMinus").addEventListener("click", () => { if (bQtyVal > 1) { bQtyVal--; buyRefresh(false); } });
+$("bPlus").addEventListener("click", () => { bQtyVal++; buyRefresh(false); });
+$("bCur").addEventListener("click", () => { bCurVal = bCurVal === "KGS" ? "USD" : "KGS"; $("bCur").textContent = bCurVal; });
+function closeBuy() { $("buySheet").classList.remove("open"); buyItem = null; renderList(); }
+$("bCancel").addEventListener("click", closeBuy);
+$("buySheet").addEventListener("click", ev => { if (ev.target === $("buySheet")) closeBuy(); });
+$("bJust").addEventListener("click", () => { const l = px.list[buyItem]; if (l) saveRec("list", Object.assign({}, l, { checked: true, qty: bQtyVal })); closeBuy(); });
+function logBuy(type) {
+  const l = px.list[buyItem]; if (!l) return; const p = px.products[l.product];
+  const amt = parseFloat($("bAmt").value);
+  if (!(amt > 0)) { $("bAmt").focus(); return; }
+  const st = $("bStore").value, cat = $("bCat").value || "Groceries", now = new Date();
+  const e = { id: uid(), date: localDate(now), time: localTime(now), ts: now.getTime(), person: me, amt: Math.round(amt * 100) / 100, cur: bCurVal, cat, type,
+    note: (p.name + (st ? " @ " + storeName(st) : "")).slice(0, 80), src: "list", upd: now.getTime(), editor: me };
+  entries[e.id] = e; dirty = true;
+  if (st) addPrice(l.product, st, amt / bQtyVal, bCurVal);           // what you actually paid becomes the latest price there
+  if (p.cat !== cat) saveRec("products", Object.assign({}, p, { cat }));
+  saveRec("list", Object.assign({}, l, { checked: true, qty: bQtyVal, paid: e.amt, paidCur: bCurVal, entry: e.id, store: st || null }));
+  persist(); scheduleSync(300);
+  toast(t("loggedAs", { amt: bCurVal === "USD" ? fmtU(e.amt) : fmtK(e.amt) }), type === "TRIP" ? "trip" : "");
+  closeBuy(); renderAll();
+}
+$("bLiving").addEventListener("click", () => logBuy("LIVING"));
+$("bTrip").addEventListener("click", () => logBuy("TRIP"));
+function uncheckItem(listId) {
+  const l = px.list[listId]; if (!l) return;
+  const e = l.entry && entries[l.entry];
+  if (e && !e.del && confirm(t("undoLog", { amt: e.cur === "USD" ? fmtU(e.amt) : fmtK(e.amt) }))) {
+    entries[e.id] = Object.assign({}, e, { del: true, upd: Math.max(Date.now(), (e.upd || 0) + 1), editor: me }); dirty = true;
+  }
+  saveRec("list", Object.assign({}, l, { checked: false, paid: null, paidCur: null, entry: null }));
+  renderAll();
+}
+
+/* ---------- read prices from a photo (price tag, shelf label, receipt) with Claude ---------- */
+function claudeKey() {
+  const own = LS.get("claudeKey", ""); if (own) return { k: own, src: "own" };
+  for (const n of ["sl.claudeKey", "sl.anthKey"]) {
+    const raw = localStorage.getItem(n); if (!raw) continue;
+    let v = raw; try { const j = JSON.parse(raw); if (typeof j === "string") v = j; } catch (e) {}
+    if (v && v.length > 20) return { k: v, src: "slovo" };
+  }
+  return null;
+}
+const SCAN_MODEL = "claude-sonnet-5-5";
+const SCAN_PROMPT = 'This photo was taken in a shop or bazaar in Kyrgyzstan. It may show a price tag, shelf label, handwritten price sign, menu or receipt. Extract the prices. ' +
+  'Reply with JSON only, no other text, in exactly this shape: {"kind":"receipt"|"price_tag"|"other","store":string|null,"currency":"KGS"|"USD","total":number|null,' +
+  '"items":[{"name":string,"name_en":string,"size":string|null,"qty":number,"price":number}]}. ' +
+  'name = as written (keep Russian/Kyrgyz), name_en = short English name. size = pack size if shown, like "85 g", "1 kg", "0.5 l". ' +
+  'price = price for ONE item (if a line shows quantity × unit price, give the unit price and qty). Prices are in som unless a $ sign is shown. ' +
+  'Skip discount, tax, bag and change lines. total = receipt total if this is a receipt. If nothing is readable, return "items":[].';
+let scanStoreDefault = null, scanResult = null;
+function shrinkTo(file, max, q) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const k = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      c.toBlob(b => b ? res(b) : rej(new Error("photo")), "image/jpeg", q); };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("photo")); };
+    img.src = url;
+  });
+}
+function startScan(storeId) {
+  scanStoreDefault = storeId || null;
+  if (!claudeKey()) { toast(t("scanNoKey"), "trip"); return; }
+  $("scanInput").click();
+}
+$("scanBtn").addEventListener("click", () => startScan(null));
+$("sqScan").addEventListener("click", () => startScan(curStore));
+$("scanInput").addEventListener("change", async ev => {
+  const f = ev.target.files && ev.target.files[0]; ev.target.value = ""; if (!f) return;
+  const blob = await shrinkTo(f, 1568, 0.82);
+  $("scanImg").src = URL.createObjectURL(blob);
+  $("scanStatus").textContent = t("scanReading"); $("scanBody").style.display = "none";
+  $("scanSheet").classList.add("open");
+  try {
+    if (navigator.onLine === false) throw new Error(t("needOnline"));
+    const buf = new Uint8Array(await blob.arrayBuffer()); let s = "";
+    for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+    const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "content-type": "application/json", "x-api-key": claudeKey().k,
+      "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      body: JSON.stringify({ model: SCAN_MODEL, max_tokens: 2000, messages: [{ role: "user", content: [
+        { type: "image", source: { type: "base64", media_type: "image/jpeg", data: btoa(s) } }, { type: "text", text: SCAN_PROMPT }] }] }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error((j.error && j.error.message) || ("HTTP " + r.status));
+    const txt = (j.content || []).map(c => c.text || "").join("");
+    const a = txt.indexOf("{"), b = txt.lastIndexOf("}");
+    scanResult = JSON.parse(txt.slice(a, b + 1));
+    showScan();
+  } catch (e) { $("scanStatus").textContent = t("scanFail", { e: (e && e.message) || e }); }
+});
+function showScan() {
+  const R = scanResult, items = (R.items || []).filter(x => x && x.price > 0);
+  if (!items.length && !(R.total > 0)) { $("scanStatus").textContent = t("scanNone"); return; }
+  $("scanStatus").textContent = t("scanFound", { n: items.length });
+  const sel = $("scStore"); fillStoreSelect(sel, scanStoreDefault || "");
+  if (R.store && !liveOf("stores").some(s => s.name.toLowerCase() === String(R.store).toLowerCase())) {
+    const o = document.createElement("option"); o.value = "new:" + R.store; o.textContent = t("newStoreOpt", { n: R.store }); sel.appendChild(o);
+    if (!scanStoreDefault) sel.value = o.value;
+  } else if (R.store && !scanStoreDefault) { const hit = liveOf("stores").find(s => s.name.toLowerCase() === String(R.store).toLowerCase()); if (hit) sel.value = hit.id; }
+  const box = $("scItems"); box.innerHTML = "";
+  items.forEach((x, i) => {
+    const row = document.createElement("div"); row.className = "scrow";
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = true; cb.dataset.i = i;
+    const nm = document.createElement("input"); nm.value = (lang === "en" && x.name_en) ? x.name_en : (x.name || x.name_en || ""); nm.className = "scName";
+    const sz = document.createElement("input"); sz.value = x.size || ""; sz.className = "scSize"; sz.placeholder = lang === "ru" ? "размер" : "size";
+    const pr = document.createElement("input"); pr.type = "number"; pr.inputMode = "decimal"; pr.value = x.price; pr.className = "scPrice";
+    row.append(cb, nm, sz, pr); box.appendChild(row);
+  });
+  const total = R.total > 0 ? R.total : (items.length === 1 ? items[0].price * (items[0].qty || 1) : null);
+  const tb = $("scTotal"); tb.style.display = total ? "" : "none";
+  if (total) { tb.textContent = R.total > 0 ? t("useTotal", { t: fmtK(total) }) : t("usePrice", { t: fmtK(total) }); tb.dataset.total = total; }
+  $("scanBody").style.display = "block";
+}
+function findProductByName(name) {
+  const n = name.trim().toLowerCase(); if (!n) return null;
+  return liveOf("products").find(p => p.name.toLowerCase() === n || (p.note || "").toLowerCase() === n) || null;
+}
+$("scSave").addEventListener("click", () => {
+  let st = $("scStore").value;
+  if (!st) { toast(t("pickStore"), "trip"); return; }
+  if (st.startsWith("new:")) st = saveRec("stores", { id: uid(), name: st.slice(4), dist: null, note: "", photo: null }).id;
+  const R = scanResult, items = (R.items || []).filter(x => x && x.price > 0);
+  let n = 0;
+  $("scItems").querySelectorAll(".scrow").forEach(row => {
+    const cb = row.querySelector("input[type=checkbox]"); if (!cb.checked) return;
+    const x = items[+cb.dataset.i], name = row.querySelector(".scName").value.trim(), size = row.querySelector(".scSize").value.trim(), price = parseFloat(row.querySelector(".scPrice").value);
+    if (!name || !(price > 0)) return;
+    let prod = findProductByName(name) || (x.name && findProductByName(x.name)) || (x.name_en && findProductByName(x.name_en));
+    if (!prod) { const other = name === x.name ? x.name_en : x.name; prod = saveRec("products", { id: uid(), name, unit: size, note: other && other !== name ? other : "", photo: null }); }
+    else if (size && !prod.unit) saveRec("products", Object.assign({}, prod, { unit: size }));
+    addPrice(prod.id, st, price, R.currency === "USD" ? "USD" : "KGS"); n++;
+  });
+  toast(t("pricesSaved", { n }));
+  $("scanSheet").classList.remove("open"); renderAll();
+});
+$("scTotal").addEventListener("click", () => {
+  const tot = parseFloat($("scTotal").dataset.total); if (!(tot > 0)) return;
+  amt = String(Math.round(tot * 100) / 100); cur = scanResult && scanResult.currency === "USD" ? "USD" : "KGS";
+  $("curBtn").textContent = cur; $("curBtn").classList.toggle("usd", cur === "USD");
+  const st = $("scStore").value, sname = st ? (st.startsWith("new:") ? st.slice(4) : storeName(st)) : (scanResult.store || "");
+  if (sname) { $("noteInput").value = sname.slice(0, 80); $("noteBtn").classList.add("has"); }
+  $("scanSheet").classList.remove("open");
+  document.querySelector('nav button[data-view="add"]').click();
+  renderAmount();
+});
+$("scClose").addEventListener("click", () => $("scanSheet").classList.remove("open"));
+
 function buildPricesCSV(all) {
   const rows = [["date", "item", "unit", "store", "price", "currency", "price_kgs", "recorded_by"]];
   let list = liveOf("prices").filter(p => px.products[p.product] && !px.products[p.product].del && px.stores[p.store] && !px.stores[p.store].del);
@@ -2468,9 +2905,11 @@ renderPad(); renderAmount(); applyLang();
 window.addEventListener("hashchange", nextStep);
 nextStep();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+setTimeout(() => { if (cfg && me) autoRateCheck(); }, window.__rateDelay || 4000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && cfg && me) autoRateCheck(); });
 
 // test hook (no secrets exposed beyond what this phone already stores)
-window.__rz = { walkRoute: (a, b) => { walkFresh(); return walkRoute(a, b); }, buildPath,  ensureWalk: () => ensureWalk(), syncNow, get entries() { return entries; }, get dirty() { return dirty; }, get px() { return px; }, buildExport, buildCSV, computeSummary, planList };
+window.__rz = { haggleInfo: (p, s, q) => haggleInfo(p, s, q), parseSize: s => parseSize(s), autoRateCheck: f => autoRateCheck(f), get shared() { return shared; }, walkRoute: (a, b) => { walkFresh(); return walkRoute(a, b); }, buildPath,  ensureWalk: () => ensureWalk(), syncNow, get entries() { return entries; }, get dirty() { return dirty; }, get px() { return px; }, buildExport, buildCSV, computeSummary, planList };
 })();
 </script>
 </body>
