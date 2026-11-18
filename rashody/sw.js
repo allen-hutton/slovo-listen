@@ -1,6 +1,6 @@
 // Rashody service worker: keeps the app itself available offline.
 // Data never goes through here — entries live in the page's storage and sync to GitHub directly.
-const CACHE = "rashody-v3";
+const CACHE = "rashody-v4";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {

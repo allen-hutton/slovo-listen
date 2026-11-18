@@ -192,7 +192,8 @@
       <div id="itemList"></div>
     </div>
     <div class="pview" id="pStores">
-      <div class="row" style="margin-top:0"><button id="newStoreBtn" class="primary" data-i18n="newStore">＋ New store</button></div>
+      <div class="row" style="margin-top:0"><button id="newStoreBtn" class="primary" data-i18n="newStore">＋ New store</button><button id="homeBtn">🏠</button></div>
+      <p class="note" id="homeInfo" style="margin:6px 0 0"></p>
       <div id="storeList"></div>
     </div>
     <div class="pview" id="pList">
@@ -200,6 +201,8 @@
         <input id="listAdd" list="productNames" autocomplete="off" data-i18n-ph="listAddPh">
         <button id="listAddBtn" class="primary">＋</button>
       </div>
+      <div class="row" style="margin-top:8px"><button id="routeBtn" data-i18n="routeBtn">📍 Shortest route from here</button></div>
+      <p class="note" id="routeInfo" style="margin:6px 0 0"></p>
       <div id="listPlan"></div>
       <div class="row">
         <button id="listClearChecked" data-i18n="clearChecked">Remove checked</button>
@@ -246,6 +249,8 @@
     <input id="sName" autocomplete="off">
     <label data-i18n="distLabel">Distance (any number — lower = closer)</label>
     <input id="sDist" type="number" inputmode="decimal" step="0.1" min="0">
+    <div class="row" style="margin-top:8px;align-items:center"><button id="sLoc" data-i18n="saveLoc">📍 I'm here — save location</button></div>
+    <p class="note" id="sLocInfo" style="margin:4px 0 0"></p>
     <label data-i18n="noteLabel">Note</label>
     <input id="sNote" autocomplete="off">
     <h3 data-i18n="pricesHere">Prices here</h3>
@@ -482,7 +487,12 @@ const T = {
     listAddPh:"Add an item to the list", clearChecked:"Remove checked", clearList:"Clear list", itemName:"Item",
     unitLabel:"Size / unit", unitPh:"e.g. 1 kg, 85 g pouch", noteLabel:"Note", pricesByStore:"Prices by store",
     addPrice:"Add / update a price", addToList:"＋ List", deleteItem:"Delete item", storeName:"Store / stall",
-    distLabel:"Distance (any number — lower = closer)", pricesHere:"Prices here", quickPrice:"Add a price here",
+    distLabel:"Distance (any number — lower = closer; used if no GPS location)",
+    saveLoc:"📍 I'm here — save location", locSaved:"📍 Location saved (±{m} m)", noLoc:"No GPS location yet — taking a photo here saves it.",
+    locFail:"Couldn't get your location. Allow Location for this site in iPhone Settings → Privacy → Location Services → Safari Websites.",
+    homeSet:"🏠 Home saved — store distances are measured from here.", homeNone:"Tap 🏠 at home to save it as the starting point.", homeConfirm:"Save this spot as home?",
+    routeBtn:"📍 Shortest route from here", routeFrom:"Route from {from}: {km} km straight-line, store to store.", fromHere:"your location", fromHome:"home",
+    routeNoGps:"Stores without a GPS location go last, by their distance number.", gettingLoc:"Getting location…", pricesHere:"Prices here", quickPrice:"Add a price here",
     addPriceBtn:"Add price", deleteStore:"Delete store", tapPhoto:"Tap to add a photo", noItems:"No items yet. Add one with ＋, or from a store.",
     noStores:"No stores yet.", noPrices:"No prices yet.", history:"history", cheapest:"cheapest", listEmpty:"Your list is empty. Add items above.",
     noPriceYet:"No price yet", expectedTotal:"Expected total", remaining:"Still to buy", pickStore:"Pick a store",
@@ -522,7 +532,12 @@ const T = {
     listAddPh:"Добавить товар в список", clearChecked:"Убрать купленное", clearList:"Очистить список", itemName:"Товар",
     unitLabel:"Размер / единица", unitPh:"напр. 1 кг, пакетик 85 г", noteLabel:"Заметка", pricesByStore:"Цены по магазинам",
     addPrice:"Добавить / обновить цену", addToList:"＋ Список", deleteItem:"Удалить товар", storeName:"Магазин / точка",
-    distLabel:"Расстояние (любое число — меньше = ближе)", pricesHere:"Цены здесь", quickPrice:"Добавить цену здесь",
+    distLabel:"Расстояние (любое число — меньше = ближе; если нет GPS)",
+    saveLoc:"📍 Я здесь — сохранить место", locSaved:"📍 Место сохранено (±{m} м)", noLoc:"GPS-места пока нет — фото здесь сохранит его.",
+    locFail:"Не удалось определить место. Разрешите геолокацию: Настройки iPhone → Конфиденциальность → Службы геолокации → Сайты Safari.",
+    homeSet:"🏠 Дом сохранён — расстояния считаются от него.", homeNone:"Нажмите 🏠 дома, чтобы сохранить точку старта.", homeConfirm:"Сохранить это место как дом?",
+    routeBtn:"📍 Кратчайший маршрут отсюда", routeFrom:"Маршрут от {from}: {km} км по прямой между магазинами.", fromHere:"вашего места", fromHome:"дома",
+    routeNoGps:"Магазины без GPS идут в конце, по номеру расстояния.", gettingLoc:"Определяю место…", pricesHere:"Цены здесь", quickPrice:"Добавить цену здесь",
     addPriceBtn:"Добавить цену", deleteStore:"Удалить магазин", tapPhoto:"Нажмите, чтобы добавить фото", noItems:"Товаров пока нет. Добавьте через ＋ или из магазина.",
     noStores:"Магазинов пока нет.", noPrices:"Цен пока нет.", history:"история", cheapest:"дешевле всего", listEmpty:"Список пуст. Добавьте товары выше.",
     noPriceYet:"Цены пока нет", expectedTotal:"Ожидаемая сумма", remaining:"Осталось купить", pickStore:"Выберите магазин",
@@ -1066,6 +1081,7 @@ async function syncNow() {
     if (dirty) {
       const snap = () => { const d = myDoc(); return JSON.stringify([d.entries, d.px, shared]); };
       const pendingAtStart = snap();
+      try { await uploadPhotos(); } catch (e) {}      // photos first, so the other phone never sees an item before its photo exists
       await push();
       // only clear the flag if nothing new was saved while we were uploading
       if (snap() === pendingAtStart) dirty = false;
@@ -1170,6 +1186,47 @@ function latestByStore(productId) {
 }
 function cheapest(productId) { return latestByStore(productId)[0] || null; }
 function shortDate(d) { return d ? d.slice(5) : ""; }
+
+/* ---------- GPS: store locations, home, shortest route ---------- */
+let home = LS.get("home", null);            // {lat,lng} — kept per phone
+let routeStart = null;                      // {lat,lng,src:"here"|"home"} used by the list
+function getPos(maxAge) {
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej(new Error("nogeo"));
+    navigator.geolocation.getCurrentPosition(p => res({ lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy || 0) }),
+      rej, { enableHighAccuracy: true, timeout: 15000, maximumAge: maxAge || 0 });
+  });
+}
+function km(a, b) {
+  const R = 6371, r = x => x * Math.PI / 180, dLa = r(b.lat - a.lat), dLo = r(b.lng - a.lng);
+  const s = Math.sin(dLa / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLo / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+const hasLoc = s => s && typeof s.lat === "number" && typeof s.lng === "number";
+function fmtKm(d) { return d < 1 ? Math.round(d * 1000) + (lang === "ru" ? " м" : " m") : d.toFixed(1) + (lang === "ru" ? " км" : " km"); }
+function storeSortKey(id) {               // GPS distance from home when we have both, else the manual number
+  const s = px.stores[id];
+  if (home && hasLoc(s)) return km(home, s);
+  return storeDist(id) + 1e6;
+}
+function bestRoute(start, ids) {
+  // fewest km visiting every store once, starting at `start` (no return leg). Exact up to 8 stops, greedy beyond.
+  const pts = ids.map(id => px.stores[id]);
+  const legLen = order => { let d = 0, cur = start; for (const i of order) { d += km(cur, pts[i]); cur = pts[i]; } return d; };
+  let idx = ids.map((_, i) => i);
+  if (ids.length <= 8) {
+    let best = idx.slice(), bestD = legLen(idx);
+    const perm = (arr, k) => {
+      if (k === arr.length) { const d = legLen(arr); if (d < bestD) { bestD = d; best = arr.slice(); } return; }
+      for (let i = k; i < arr.length; i++) { [arr[k], arr[i]] = [arr[i], arr[k]]; perm(arr, k + 1); [arr[k], arr[i]] = [arr[i], arr[k]]; }
+    };
+    perm(idx, 0);
+    return { order: best.map(i => ids[i]), km: bestD };
+  }
+  const left = new Set(idx), out = []; let cur = start, total = 0;
+  while (left.size) { let bi = -1, bd = Infinity; for (const i of left) { const d = km(cur, pts[i]); if (d < bd) { bd = d; bi = i; } } out.push(ids[bi]); total += bd; cur = pts[bi]; left.delete(bi); }
+  return { order: out, km: total };
+}
 
 /* ---------- photos: small JPEGs in IndexedDB, synced as separate files ---------- */
 let idbP = null;
@@ -1300,7 +1357,7 @@ let curProduct = null, pCurVal = "KGS", pPendingPhoto;
 function fillStoreSelect(sel, preferred) {
   sel.innerHTML = "";
   const ph = document.createElement("option"); ph.value = ""; ph.textContent = t("pickStore"); sel.appendChild(ph);
-  liveOf("stores").sort((a, b) => storeDist(a.id) - storeDist(b.id)).forEach(s => { const o = document.createElement("option"); o.value = s.id; o.textContent = s.name; sel.appendChild(o); });
+  liveOf("stores").sort((a, b) => storeSortKey(a.id) - storeSortKey(b.id)).forEach(s => { const o = document.createElement("option"); o.value = s.id; o.textContent = s.name; sel.appendChild(o); });
   if (preferred && px.stores[preferred]) sel.value = preferred;
 }
 function openProduct(id, focusName) {
@@ -1313,7 +1370,7 @@ function openProduct(id, focusName) {
   const del = $("pDelete"); delete del.dataset.armed; del.textContent = t("deleteItem");
   renderProductPrices();
   $("productSheet").classList.add("open");
-  if (focusName) setTimeout(() => $("pName").select(), 50);
+  if (focusName) setTimeout(() => { const a = document.activeElement; if (!a || a === document.body || a.tagName === "BUTTON") $("pName").select(); }, 50);
 }
 function renderProductPrices() {
   const box = $("pPrices"); box.innerHTML = "";
@@ -1374,7 +1431,8 @@ $("productSheet").addEventListener("click", ev => { if (ev.target === $("product
 /* ---------- stores ---------- */
 function renderStores() {
   const box = $("storeList"); box.innerHTML = "";
-  const stores = liveOf("stores").sort((a, b) => (storeDist(a.id) - storeDist(b.id)) || a.name.localeCompare(b.name));
+  $("homeInfo").textContent = home ? t("homeSet") : t("homeNone");
+  const stores = liveOf("stores").sort((a, b) => (storeSortKey(a.id) - storeSortKey(b.id)) || a.name.localeCompare(b.name));
   if (!stores.length) { box.innerHTML = '<p class="note">' + t("noStores") + "</p>"; return; }
   for (const s of stores) {
     const row = document.createElement("div"); row.className = "item";
@@ -1383,7 +1441,7 @@ function renderStores() {
     const tt = document.createElement("div"); tt.className = "t"; tt.textContent = s.name;
     const sub = document.createElement("div"); sub.className = "s";
     const n = new Set(liveOf("prices").filter(p => p.store === s.id && px.products[p.product] && !px.products[p.product].del).map(p => p.product)).size;
-    sub.textContent = (isFinite(storeDist(s.id)) ? storeDist(s.id) : t("noDist")) + " · " + n + " " + (lang === "ru" ? "тов." : "items") + (s.note ? " · " + s.note : "");
+    sub.textContent = (home && hasLoc(s) ? "📍 " + fmtKm(km(home, s)) : hasLoc(s) ? "📍" : isFinite(storeDist(s.id)) ? storeDist(s.id) : t("noDist")) + " · " + n + " " + (lang === "ru" ? "тов." : "items") + (s.note ? " · " + s.note : "");
     l.append(tt, sub);
     row.appendChild(l);
     row.addEventListener("click", () => openStore(s.id));
@@ -1391,7 +1449,31 @@ function renderStores() {
   }
   hydratePhotos(box);
 }
-let curStore = null, sPendingPhoto, sqCurVal = "KGS";
+let curStore = null, sPendingPhoto, sqCurVal = "KGS", sPendingLoc;
+function showStoreLoc() {
+  const s = px.stores[curStore], l = sPendingLoc || (hasLoc(s) ? s : null);
+  $("sLocInfo").textContent = l ? t("locSaved", { m: l.acc || "?" }) + (home ? " · " + fmtKm(km(home, l)) + " 🏠" : "") : t("noLoc");
+}
+async function captureStoreLoc(quiet) {
+  if (!quiet) $("sLocInfo").textContent = t("gettingLoc");
+  const forStore = curStore;
+  try { const p = await getPos(); if (curStore === forStore) { sPendingLoc = p; showStoreLoc(); } }
+  catch (e) { if (!quiet && curStore === forStore) $("sLocInfo").textContent = t("locFail"); }
+}
+$("sLoc").addEventListener("click", () => captureStoreLoc(false));
+$("homeBtn").addEventListener("click", async () => {
+  if (!confirm(t("homeConfirm"))) return;
+  $("homeInfo").textContent = t("gettingLoc");
+  try { const p = await getPos(); home = { lat: p.lat, lng: p.lng }; LS.set("home", home); toast(t("saved")); }
+  catch (e) { toast(t("locFail"), "trip"); }
+  renderStores();
+});
+$("routeBtn").addEventListener("click", async () => {
+  $("routeInfo").textContent = t("gettingLoc");
+  try { const p = await getPos(); routeStart = { lat: p.lat, lng: p.lng, src: "here" }; }
+  catch (e) { toast(t("locFail"), "trip"); }
+  renderList();
+});
 $("newStoreBtn").addEventListener("click", () => {
   const n = liveOf("stores").length;
   const rec = saveRec("stores", { id: uid(), name: (lang === "ru" ? "Магазин " : "Store ") + (n + 1), dist: n + 1, note: "", photo: null });
@@ -1399,14 +1481,15 @@ $("newStoreBtn").addEventListener("click", () => {
 });
 function openStore(id, focusName) {
   const s = px.stores[id]; if (!s) return;
-  curStore = id; sPendingPhoto = undefined;
+  curStore = id; sPendingPhoto = undefined; sPendingLoc = undefined;
   $("sName").value = s.name; $("sDist").value = isFinite(storeDist(id)) ? s.dist : ""; $("sNote").value = s.note || "";
   bigPhoto($("sPhoto"), s.photo);
   $("sqName").value = ""; $("sqAmt").value = ""; sqCurVal = "KGS"; $("sqCur").textContent = sqCurVal;
   const del = $("sDelete"); delete del.dataset.armed; del.textContent = t("deleteStore");
+  showStoreLoc();
   renderStorePrices();
   $("storeSheet").classList.add("open");
-  if (focusName) setTimeout(() => $("sName").select(), 50);
+  if (focusName) setTimeout(() => { const a = document.activeElement; if (!a || a === document.body || a.tagName === "BUTTON") $("sName").select(); }, 50);
 }
 function renderStorePrices() {
   const box = $("sPrices"); box.innerHTML = "";
@@ -1427,7 +1510,10 @@ function renderStorePrices() {
     box.appendChild(row);
   }
 }
-$("sPhoto").addEventListener("click", () => pickPhoto(id => { sPendingPhoto = id; bigPhoto($("sPhoto"), id); }));
+$("sPhoto").addEventListener("click", () => pickPhoto(id => {
+  sPendingPhoto = id; bigPhoto($("sPhoto"), id);
+  if (!hasLoc(px.stores[curStore]) && !sPendingLoc) captureStoreLoc(true);     // photo taken at the stall → remember where it is
+}));
 $("sqCur").addEventListener("click", () => { sqCurVal = sqCurVal === "KGS" ? "USD" : "KGS"; $("sqCur").textContent = sqCurVal; });
 function findOrCreateProduct(name) {
   const n = name.trim(); if (!n) return null;
@@ -1449,7 +1535,8 @@ $("sSave").addEventListener("click", () => {
   const d = parseFloat($("sDist").value);
   const upd = Object.assign({}, s, { name: $("sName").value.trim() || s.name, dist: isNaN(d) ? null : d, note: $("sNote").value.trim() });
   if (sPendingPhoto !== undefined) upd.photo = sPendingPhoto;
-  if (["name", "dist", "note", "photo"].some(k => (upd[k] ?? "") !== (s[k] ?? ""))) saveRec("stores", upd);
+  if (sPendingLoc) { upd.lat = sPendingLoc.lat; upd.lng = sPendingLoc.lng; upd.acc = sPendingLoc.acc; }
+  if (["name", "dist", "note", "photo", "lat", "lng"].some(k => (upd[k] ?? "") !== (s[k] ?? ""))) saveRec("stores", upd);
   $("storeSheet").classList.remove("open"); curStore = null; renderPrices();
 });
 $("sClose").addEventListener("click", () => { $("storeSheet").classList.remove("open"); curStore = null; renderPrices(); });
@@ -1477,14 +1564,24 @@ function planList() {
     if (!c) { none.push({ l, p, c: null }); continue; }
     (groups[c.store] = groups[c.store] || []).push({ l, p, c });
   }
-  const order = Object.keys(groups).sort((a, b) => (storeDist(a) - storeDist(b)) || storeName(a).localeCompare(storeName(b)));
+  let order = Object.keys(groups).sort((a, b) => (storeDist(a) - storeDist(b)) || storeName(a).localeCompare(storeName(b)));
+  let route = null;
+  const start = routeStart || (home ? Object.assign({ src: "home" }, home) : null);
+  const gps = order.filter(id => hasLoc(px.stores[id]));
+  if (start && gps.length) {
+    route = bestRoute(start, gps); route.src = start.src || "home"; route.legs = {};
+    let cur = start; for (const id of route.order) { route.legs[id] = km(cur, px.stores[id]); cur = px.stores[id]; }
+    order = route.order.concat(order.filter(id => !hasLoc(px.stores[id])));
+    route.partial = gps.length < Object.keys(groups).length;
+  }
   let total = 0, left = 0;
   for (const s of order) for (const x of groups[s]) { const v = priceKGS(x.c) * (x.l.qty || 1); total += v; if (!x.l.checked) left += v; }
-  return { order, groups, none, total, left };
+  return { order, groups, none, total, left, route };
 }
 function renderList() {
   const box = $("listPlan"); box.innerHTML = "";
   const plan = planList();
+  $("routeInfo").textContent = plan.route ? t("routeFrom", { from: plan.route.src === "here" ? t("fromHere") : t("fromHome"), km: plan.route.km.toFixed(1) }) + (plan.route.partial ? " " + t("routeNoGps") : "") : "";
   if (!plan.order.length && !plan.none.length) { box.innerHTML = '<p class="note">' + t("listEmpty") + "</p>"; return; }
   const line = x => {
     const row = document.createElement("div"); row.className = "litem" + (x.l.checked ? " done" : "");
@@ -1506,7 +1603,8 @@ function renderList() {
   };
   for (const sid of plan.order) {
     const g = document.createElement("div"); g.className = "lgroup";
-    const h = document.createElement("h4"); h.textContent = storeName(sid) + (isFinite(storeDist(sid)) ? " · " + storeDist(sid) : "");
+    const h = document.createElement("h4");
+    h.textContent = storeName(sid) + (plan.route && plan.route.legs[sid] != null ? " · " + fmtKm(plan.route.legs[sid]) : isFinite(storeDist(sid)) ? " · " + storeDist(sid) : "");
     g.appendChild(h);
     plan.groups[sid].sort((a, b) => a.p.name.localeCompare(b.p.name)).forEach(x => g.appendChild(line(x)));
     box.appendChild(g);
