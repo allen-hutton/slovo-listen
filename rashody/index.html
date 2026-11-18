@@ -40,9 +40,26 @@
   #amount.empty{color:#4a525c}
   #curBtn{min-width:76px;height:52px;font-size:18px;font-weight:700}
   #curBtn.usd{background:#1d3550;border-color:var(--accent)}
-  .cats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
-  .cats button{height:40px;font-size:14px;text-align:left;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .cats button.sel{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .catpager{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .catpager::-webkit-scrollbar{display:none}
+  .catpage{flex:0 0 100%;scroll-snap-align:start;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,1fr);gap:6px;box-sizing:border-box;padding:0 1px;min-width:0}
+  .ctile{min-width:0;height:60px;padding:3px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-radius:12px}
+  .ctile .ce{font-size:24px;line-height:28px}
+  .ctile .cl{font-size:10.5px;line-height:12px;max-width:100%;overflow:hidden;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;text-align:center}
+  .catgrid .ctile{height:66px}
+  .ctile.sel{background:var(--accent);border-color:var(--accent)}
+  .ctile.sel .cl{color:#fff;font-weight:600}
+  .catbar{display:flex;align-items:center;gap:8px;height:24px;margin-top:3px}
+  .catbar .picked{flex:1;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .catbar .picked b{color:var(--text,#fff)}
+  .dots{display:flex;gap:6px;align-items:center}
+  .dots i{width:7px;height:7px;border-radius:50%;background:#4a525c;display:block}
+  .dots i.on{background:#fff}
+  .catbar .srch{height:24px;padding:0 10px;font-size:13px;border-radius:12px}
+  .catgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px}
+  .newcat{display:flex;gap:8px;margin-top:12px;align-items:center}
+  .newcat input{flex:1}
+  .newcat input.emo{flex:0 0 58px;text-align:center;font-size:22px}
   #noteBtn{width:52px;height:52px;font-size:20px;flex:0 0 52px}
   #noteBtn.has{background:#1d3550;border-color:var(--accent)}
   .noteRow{display:none;margin:0 0 6px}
@@ -53,7 +70,7 @@
   @media (max-height:620px){
     #amount{font-size:36px;min-height:46px;line-height:46px}
     #curBtn,#noteBtn{height:44px}
-    .cats{gap:5px} .cats button{height:34px;font-size:13px}
+    .ctile{height:52px;gap:0} .ctile .ce{font-size:19px;line-height:22px} .ctile .cl{font-size:10px;line-height:11px} .catpage{gap:5px}
     .pad{gap:5px} .pad button{font-size:22px}
     .saves button{height:50px}
     nav button{height:48px}
@@ -178,7 +195,8 @@
     <button id="curBtn">KGS</button>
   </div>
   <div class="noteRow" id="noteRow"><input id="noteInput" maxlength="80" autocomplete="off" data-i18n-ph="notePh"></div>
-  <div class="cats" id="cats"></div>
+  <div class="catpager" id="cats"></div>
+  <div class="catbar"><div class="picked" id="catPicked"></div><div class="dots" id="catDots"></div><button class="srch" id="catSearchBtn">🔍 <span data-i18n="allCats">All</span></button></div>
   <div class="pad" id="pad"></div>
   <div class="saves">
     <button id="saveLiving" disabled data-i18n="living">LIVING</button>
@@ -236,6 +254,26 @@
   </div>
   <datalist id="productNames"></datalist>
 </section>
+
+<!-- category search sheet -->
+<div class="sheet" id="catSheet">
+  <div class="card">
+    <div class="addrow" style="margin-top:0">
+      <input id="catQ" autocomplete="off" data-i18n-ph="catSearchPh">
+      <button id="catClose" data-i18n="close">Close</button>
+    </div>
+    <div class="catgrid" id="catGrid"></div>
+    <div id="newCatBox" style="display:none">
+      <label data-i18n="newCat">New category</label>
+      <div class="newcat" style="margin-top:4px">
+        <input id="ncEmoji" class="emo" maxlength="4" autocomplete="off" placeholder="🙂">
+        <input id="ncName" maxlength="28" autocomplete="off">
+        <button id="ncAdd" class="primary" data-i18n="create">Create</button>
+      </div>
+      <p class="note" data-i18n="newCatNote">Tap the first box and use the emoji keyboard for the icon. Shared with the other phone.</p>
+    </div>
+  </div>
+</div>
 
 <!-- product sheet -->
 <div class="sheet" id="productSheet">
@@ -464,18 +502,41 @@ const TRIP_START = "2026-11-16", TRIP_END = "2026-12-13";
 const DEFAULT_RATE = 87.5;              // KGS per 1 USD (mid-market, Nov 2026)
 const POLL_MS = 8000;
 const PEOPLE = ["Allen", "Sveta"];
+// k = stored key (never change existing ones — old entries use them). w = extra search words.
 const CATS = [
-  { k: "Groceries",            en: "Groceries",              ru: "Продукты",          e: "🛒" },
-  { k: "Eating out",           en: "Eating out",             ru: "Кафе, рестораны",    e: "🍽" },
-  { k: "Taxi/transport",       en: "Taxi/transport",         ru: "Такси, транспорт",   e: "🚕" },
-  { k: "Household & odds-ends",en: "Household & odds-ends",  ru: "Хозяйство, мелочи",  e: "🧺" },
-  { k: "Gifts",                en: "Gifts",                  ru: "Подарки",            e: "🎁" },
-  { k: "Family/house build",   en: "Family/house build",     ru: "Семья, стройка",     e: "🏠" },
-  { k: "Phone/internet",       en: "Phone/internet",         ru: "Связь, интернет",    e: "📱" },
-  { k: "Health/pharmacy",      en: "Health/pharmacy",        ru: "Здоровье, аптека",   e: "💊" },
-  { k: "Fun",                  en: "Fun",                    ru: "Развлечения",        e: "🎉" },
-  { k: "Other",                en: "Other",                  ru: "Другое",             e: "•" }
+  { k: "Groceries",            en: "Groceries",          ru: "Продукты",          e: "🛒", w: "food supermarket globus magnum продукты магазин еда" },
+  { k: "Eating out",           en: "Eating out",         ru: "Кафе, рестораны",   e: "🍽", w: "restaurant cafe lunch dinner ресторан кафе обед ужин" },
+  { k: "Taxi/transport",       en: "Taxi/transport",     ru: "Такси, транспорт",  e: "🚕", w: "yandex uber bus marshrutka такси яндекс маршрутка автобус" },
+  { k: "Coffee & snacks",      en: "Coffee & snacks",    ru: "Кофе, перекус",     e: "☕", w: "coffee tea snack кофе чай перекус" },
+  { k: "Rotisserie chicken",   en: "Rotisserie chicken", ru: "Курица гриль",      e: "🍗", w: "chicken grill курица гриль" },
+  { k: "Bakery",               en: "Bread & bakery",     ru: "Хлеб, выпечка",     e: "🥖", w: "bread lepyoshka samsa хлеб лепёшка лепешка самса выпечка" },
+  { k: "Fruit & veg",          en: "Fruit & veg",        ru: "Фрукты, овощи",     e: "🍎", w: "fruit vegetables bazaar фрукты овощи базар" },
+  { k: "Meat & fish",          en: "Meat & fish",        ru: "Мясо, рыба",        e: "🥩", w: "meat beef lamb fish мясо говядина баранина рыба" },
+  { k: "Candy & sweets",       en: "Candy & sweets",     ru: "Сладости",          e: "🍬", w: "candy chocolate cake dessert конфеты шоколад торт сладкое" },
+  { k: "Drinks",               en: "Drinks",             ru: "Напитки",           e: "🧃", w: "water juice drinks вода сок напитки" },
+  { k: "Household & odds-ends",en: "Household",          ru: "Хозяйство, мелочи", e: "🧺", w: "cleaning odds ends хозтовары уборка мелочи" },
+  { k: "Personal care",        en: "Personal care",      ru: "Гигиена, косметика",e: "🧴", w: "toiletries shampoo soap cosmetics шампунь мыло косметика гигиена" },
+  { k: "Beauty/haircut",       en: "Haircut & beauty",   ru: "Стрижка, красота",  e: "💇", w: "haircut barber salon manicure стрижка парикмахер салон маникюр" },
+  { k: "Clothes",              en: "Clothes & shoes",    ru: "Одежда, обувь",     e: "👕", w: "clothes shoes jacket одежда обувь куртка" },
+  { k: "Electronics",          en: "Electronics",        ru: "Электроника",       e: "🔌", w: "charger cable laptop phone battery зарядка кабель ноутбук телефон" },
+  { k: "Phone/internet",       en: "Phone/internet",     ru: "Связь, интернет",   e: "📱", w: "sim mobile data top up megacom beeline o! сим связь пополнение" },
+  { k: "Gifts",                en: "Gifts",              ru: "Подарки",           e: "🎁", w: "present birthday souvenir подарок день рождения сувенир" },
+  { k: "Cash to family",       en: "Cash to family",     ru: "Деньги родным",     e: "💵", w: "family mom help деньги мама помощь родные" },
+  { k: "Family/house build",   en: "Family/house build", ru: "Семья, стройка",    e: "🏠", w: "construction build repair стройка ремонт дом" },
+  { k: "Health/pharmacy",      en: "Pharmacy",           ru: "Аптека",            e: "💊", w: "medicine pharmacy аптека лекарства" },
+  { k: "Doctor/dentist",       en: "Doctor/dentist",     ru: "Врач, стоматолог",  e: "🦷", w: "doctor dentist clinic dental врач стоматолог клиника зубы" },
+  { k: "Pets",                 en: "Pets",               ru: "Питомцы",           e: "🐾", w: "pet food cat dog корм кошка собака питомец" },
+  { k: "Veterinary",           en: "Vet",                ru: "Ветеринар",         e: "🩺", w: "vet veterinary ветеринар ветклиника" },
+  { k: "Fun",                  en: "Entertainment",      ru: "Развлечения",       e: "🎉", w: "fun movie cinema games concert кино игры концерт" },
+  { k: "Sports",               en: "Sports & gym",       ru: "Спорт",             e: "🏋", w: "gym sport fitness pool спортзал фитнес бассейн" },
+  { k: "Books/learning",       en: "Books & learning",   ru: "Книги, учёба",      e: "📚", w: "book course lesson книга курс урок учёба учеба" },
+  { k: "Travel",               en: "Flights & hotels",   ru: "Перелёты, жильё",   e: "✈️", w: "flight hotel airbnb ticket перелет перелёт отель билет гостиница" },
+  { k: "Bank/ATM fees",        en: "Bank & ATM fees",    ru: "Комиссии, банк",    e: "🏧", w: "atm fee exchange commission банкомат комиссия обмен" },
+  { k: "Donations",            en: "Charity & tips",     ru: "Чаевые, помощь",    e: "🤲", w: "charity donation tip beggar пожертвование чаевые милостыня" },
+  { k: "Impulse buy",          en: "Impulse buy",        ru: "Импульсная покупка",e: "🤦", w: "impulse regret oops mistake импульс зря жалею" },
+  { k: "Other",                en: "Other",              ru: "Другое",            e: "•",  w: "misc other разное другое" }
 ];
+const DEFAULT_CAT_ORDER = ["Groceries", "Eating out", "Taxi/transport", "Coffee & snacks", "Household & odds-ends", "Gifts", "Health/pharmacy", "Fun"];
 
 const T = {
   en: {
@@ -522,6 +583,8 @@ const T = {
     noPriceYet:"No price yet", expectedTotal:"Expected total", remaining:"Still to buy", pickStore:"Pick a store",
     needStore:"Add a store first (Stores tab).", unknownItem:"Not in your items yet — added it.", added:"Added.", qtyLabel:"qty",
     noDist:"no distance",
+    allCats:"All", catSearchPh:"Search categories", newCat:"New category", create:"Create",
+    newCatNote:"Tap the first box and use the emoji keyboard for the icon. Shared with the other phone.", catExists:"That category already exists.",
     pMap:"Map", mapDownloading:"Saving the Bishkek map to this phone for offline use… {p}% (9 MB, one time)",
     mapNeedsNet:"The map downloads once (9 MB). Connect to the internet and open Map again — after that it works offline.",
     homeLabel:"Home", openStore:"Open store", onList:"From your list:", fromYou:"from you", fromHomeShort:"from home",
@@ -571,6 +634,8 @@ const T = {
     noPriceYet:"Цены пока нет", expectedTotal:"Ожидаемая сумма", remaining:"Осталось купить", pickStore:"Выберите магазин",
     needStore:"Сначала добавьте магазин (вкладка «Магазины»).", unknownItem:"Такого товара не было — добавлен.", added:"Добавлено.", qtyLabel:"шт",
     noDist:"без расстояния",
+    allCats:"Все", catSearchPh:"Поиск категории", newCat:"Новая категория", create:"Создать",
+    newCatNote:"Нажмите на первое поле и выберите значок на клавиатуре эмодзи. Видна и на другом телефоне.", catExists:"Такая категория уже есть.",
     pMap:"Карта", mapDownloading:"Сохраняю карту Бишкека на телефон для работы без сети… {p}% (9 МБ, один раз)",
     mapNeedsNet:"Карта скачивается один раз (9 МБ). Подключитесь к интернету и откройте «Карту» снова — дальше она работает без сети.",
     homeLabel:"Дом", openStore:"Открыть магазин", onList:"Из списка:", fromYou:"от вас", fromHomeShort:"от дома",
@@ -597,8 +662,8 @@ let files   = LS.get("files", {});      // person -> { sha, etag }
 let shared  = LS.get("shared", { rate: DEFAULT_RATE, upd: 0, by: "" });   // shared settings (rate)
 let lastSync = LS.get("lastSync", 0), syncError = "";
 // prices: stores, products, price observations (history), shopping list — same merge rules as entries
-let px = LS.get("px", { stores: {}, products: {}, prices: {}, list: {} });
-["stores", "products", "prices", "list"].forEach(k => { if (!px[k]) px[k] = {}; });
+let px = LS.get("px", { stores: {}, products: {}, prices: {}, list: {}, cats: {} });
+["stores", "products", "prices", "list", "cats"].forEach(k => { if (!px[k]) px[k] = {}; });
 let photoQueue = LS.get("photoQueue", []);      // photo ids waiting to upload
 
 function persist() {
@@ -607,8 +672,15 @@ function persist() {
 }
 function t(k, vars) { let s = (T[lang] && T[lang][k]) || T.en[k] || k; if (vars) for (const v in vars) s = s.replace("{" + v + "}", vars[v]); return s; }
 function personLabel(p) { return lang === "ru" ? (PERSON_RU[p] || p) : p; }
-function catLabel(k) { const c = CATS.find(c => c.k === k); return c ? (lang === "ru" ? c.ru : c.en) : k; }
-function catEmoji(k) { const c = CATS.find(c => c.k === k); return c ? c.e : "•"; }
+// built-in categories plus the household's own (px.cats, synced like everything else)
+function allCats() {
+  const custom = (typeof px !== "undefined" ? Object.values(px.cats || {}) : []).filter(c => !c.del && c.k && !CATS.some(b => b.k === c.k))
+    .map(c => ({ k: c.k, en: c.k, ru: c.k, e: c.e || "•", w: "", custom: true }));
+  return CATS.concat(custom);
+}
+function catOf(k) { return allCats().find(c => c.k === k); }
+function catLabel(k) { const c = catOf(k); return c ? (lang === "ru" ? c.ru : c.en) : k; }
+function catEmoji(k) { const c = catOf(k); return c ? c.e : "•"; }
 const $ = id => document.getElementById(id);
 
 function uid() {
@@ -650,17 +722,75 @@ function renderAmount() {
   const ok = parseFloat(amt) > 0;
   $("saveLiving").disabled = !ok; $("saveTrip").disabled = !ok;
 }
-function renderCats() {
-  const box = $("cats"); box.innerHTML = "";
-  CATS.forEach(c => {
-    const b = document.createElement("button");
-    b.textContent = c.e + " " + (lang === "ru" ? c.ru : c.en);
-    b.dataset.cat = c.k;
-    b.classList.toggle("sel", cat === c.k);
-    b.addEventListener("click", () => { cat = (cat === c.k ? null : c.k); renderCats(); });
-    box.appendChild(b);
-  });
+// most-used first: this phone's own entries, recent ones counting more (half-life 30 days)
+function catScores() {
+  const s = {}, now = Date.now();
+  for (const e of Object.values(entries)) {
+    if (e.del || e.person !== me) continue;
+    s[e.cat] = (s[e.cat] || 0) + Math.pow(0.5, (now - (e.ts || now)) / (30 * 864e5));
+  }
+  return s;
 }
+function sortedCats() {
+  const s = catScores(), cats = allCats();
+  const base = k => { const i = DEFAULT_CAT_ORDER.indexOf(k); return i < 0 ? 100 + cats.findIndex(c => c.k === k) : i; };
+  return cats.slice().sort((a, b) => ((s[b.k] || 0) - (s[a.k] || 0)) || (base(a.k) - base(b.k)));
+}
+let catOrder = null;          // frozen while the Add screen is in use, so tiles don't jump around under your finger
+function catTile(c, onPick) {
+  const b = document.createElement("button"); b.className = "ctile" + (cat === c.k ? " sel" : ""); b.dataset.cat = c.k;
+  const e = document.createElement("span"); e.className = "ce"; e.textContent = c.e;
+  const l = document.createElement("span"); l.className = "cl"; l.textContent = lang === "ru" ? c.ru : c.en;
+  b.append(e, l); b.addEventListener("click", () => onPick(c.k));
+  return b;
+}
+function renderCats(scrollToSel) {
+  if (!catOrder) catOrder = sortedCats().map(c => c.k);
+  const cats = catOrder.map(catOf).filter(Boolean);
+  allCats().forEach(c => { if (!catOrder.includes(c.k)) { catOrder.push(c.k); cats.push(c); } });
+  const box = $("cats"), keepX = box.scrollLeft; box.innerHTML = "";
+  const pages = Math.ceil(cats.length / 8);
+  for (let p = 0; p < pages; p++) {
+    const pg = document.createElement("div"); pg.className = "catpage";
+    cats.slice(p * 8, p * 8 + 8).forEach(c => pg.appendChild(catTile(c, k => { cat = (cat === k ? null : k); renderCats(); })));
+    box.appendChild(pg);
+  }
+  const dots = $("catDots"); dots.innerHTML = "";
+  for (let p = 0; p < pages; p++) { const d = document.createElement("i"); d.addEventListener("click", () => box.scrollTo({ left: p * box.clientWidth, behavior: "smooth" })); dots.appendChild(d); }
+  const selIdx = cat ? cats.findIndex(c => c.k === cat) : -1;
+  if (scrollToSel && selIdx >= 0) box.scrollLeft = Math.floor(selIdx / 8) * box.clientWidth; else box.scrollLeft = keepX;
+  paintDots();
+  $("catPicked").innerHTML = cat ? "<b>" + esc(catEmoji(cat) + " " + catLabel(cat)) + "</b>" : "";
+}
+function paintDots() {
+  const box = $("cats"), w = box.clientWidth || 1, p = Math.round(box.scrollLeft / w);
+  [...$("catDots").children].forEach((d, i) => d.classList.toggle("on", i === p));
+}
+$("cats").addEventListener("scroll", () => paintDots(), { passive: true });
+
+/* search / all categories / create your own */
+function renderCatGrid() {
+  const q = $("catQ").value.trim().toLowerCase();
+  const grid = $("catGrid"); grid.innerHTML = "";
+  const list = sortedCats().filter(c => !q || (c.en + " " + c.ru + " " + c.k + " " + (c.w || "")).toLowerCase().includes(q));
+  list.forEach(c => grid.appendChild(catTile(c, k => { cat = k; $("catSheet").classList.remove("open"); renderCats(true); })));
+  const exact = allCats().some(c => [c.k, c.en, c.ru].some(x => x.toLowerCase() === q));
+  $("newCatBox").style.display = q && !exact ? "block" : "none";
+  if (q && !exact && document.activeElement !== $("ncName")) $("ncName").value = $("catQ").value.trim().replace(/^./, m => m.toUpperCase());
+}
+$("catSearchBtn").addEventListener("click", () => { $("catQ").value = ""; $("ncEmoji").value = ""; renderCatGrid(); $("catSheet").classList.add("open"); });
+$("catQ").addEventListener("input", renderCatGrid);
+$("catClose").addEventListener("click", () => $("catSheet").classList.remove("open"));
+$("catSheet").addEventListener("click", ev => { if (ev.target === $("catSheet")) $("catSheet").classList.remove("open"); });
+$("ncAdd").addEventListener("click", () => {
+  const name = $("ncName").value.trim(); if (!name) return;
+  if (allCats().some(c => [c.k, c.en, c.ru].some(x => x.toLowerCase() === name.toLowerCase()))) { toast(t("catExists"), "trip"); return; }
+  const emo = ($("ncEmoji").value.trim() || "•");
+  const id = uid(); px.cats[id] = { id, k: name, e: [...emo].slice(0, 2).join(""), upd: Date.now(), editor: me };
+  dirty = true; persist(); scheduleSync(300);
+  cat = name; catOrder = null;
+  $("catSheet").classList.remove("open"); renderCats(true);
+});
 function renderPad() {
   const keys = ["1","2","3","4","5","6","7","8","9",".","0","⌫"];
   const box = $("pad"); box.innerHTML = "";
@@ -713,7 +843,7 @@ function saveEntry(type) {
   entries[e.id] = e; dirty = true;
   persist();                                   // saved on the phone before anything else happens
   toast(type === "TRIP" ? t("savedTrip") : t("saved"), type === "TRIP" ? "trip" : "");
-  amt = ""; cat = null; $("noteInput").value = ""; $("noteRow").classList.remove("open"); $("noteBtn").classList.remove("has"); $("noteInput").blur();
+  amt = ""; cat = null; catOrder = null; $("noteInput").value = ""; $("noteRow").classList.remove("open"); $("noteBtn").classList.remove("has"); $("noteInput").blur();
   renderAmount(); renderCats(); renderAll();
   scheduleSync(300);
 }
@@ -761,7 +891,8 @@ function renderRecent() {
 let editing = null, eCurVal = "KGS", eTypeVal = "LIVING";
 function renderEditCats() {
   const s = $("eCat"); const v = s.value; s.innerHTML = "";
-  CATS.forEach(c => { const o = document.createElement("option"); o.value = c.k; o.textContent = c.e + " " + (lang === "ru" ? c.ru : c.en); s.appendChild(o); });
+  allCats().forEach(c => { const o = document.createElement("option"); o.value = c.k; o.textContent = c.e + " " + (lang === "ru" ? c.ru : c.en); s.appendChild(o); });
+  if (v && !catOf(v)) { const o = document.createElement("option"); o.value = v; o.textContent = v; s.appendChild(o); }
   if (v) s.value = v;
 }
 function openEdit(id) {
@@ -1057,7 +1188,7 @@ function mergeDoc(doc) {
   }
   if (doc.shared && (doc.shared.upd || 0) > (shared.upd || 0)) { shared = doc.shared; changed = true; }
   const dp = doc.px || {};
-  for (const k of ["stores", "products", "prices", "list"]) {
+  for (const k of ["stores", "products", "prices", "list", "cats"]) {
     for (const r of (dp[k] || [])) {
       if (!r || !r.id) continue;
       if (newer(r, px[k][r.id]) && JSON.stringify(r) !== JSON.stringify(px[k][r.id])) { px[k][r.id] = r; changed = true; }
@@ -1081,7 +1212,7 @@ function myDoc() {
   const mine = Object.values(entries).filter(e => e.editor === me).sort((a, b) => a.ts - b.ts);
   const mineOf = k => Object.values(px[k]).filter(r => r.editor === me);
   return { v: 2, person: me, updated: Date.now(), shared: shared.by === me ? shared : undefined, entries: mine,
-    px: { stores: mineOf("stores"), products: mineOf("products"), prices: mineOf("prices"), list: mineOf("list") } };
+    px: { stores: mineOf("stores"), products: mineOf("products"), prices: mineOf("prices"), list: mineOf("list"), cats: mineOf("cats") } };
 }
 async function push() {
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -1820,6 +1951,7 @@ function renderAll() {
   if ($("summary").classList.contains("on")) renderSummary();
   if ($("settings").classList.contains("on")) renderSettings();
   if ($("prices").classList.contains("on")) renderPrices();
+  if ($("add").classList.contains("on") && Object.values(px.cats).some(c => !catOrder || !catOrder.includes(c.k))) renderCats();
 }
 renderPad(); renderAmount(); applyLang();
 window.addEventListener("hashchange", nextStep);
