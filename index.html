@@ -134,6 +134,12 @@
     <label for="claudeKeyInput">Claude API key — for the Gist panel (stored only on this phone)</label>
     <input id="claudeKeyInput" type="password" autocomplete="off" placeholder="sk-ant-…">
 
+    <h3>Microphone</h3>
+    <label for="micSelect">Which mic to listen with</label>
+    <select id="micSelect" style="width:100%;font:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0d0f11;color:var(--text)"></select>
+    <p class="note" id="micNote">Plug in a USB mic and pick it here. If earbuds are connected, pick the iPhone or USB mic — an earbud mic mostly hears the person wearing it.</p>
+    <div class="toggle"><span>Auto volume (boosts quiet voices, also boosts noise)</span><button id="agcBtn">Off</button></div>
+
     <h3>The room</h3>
     <label>People talking</label>
     <div class="row" style="margin-top:0">
@@ -169,7 +175,7 @@
       <button id="setSave" class="on">Save</button>
       <button id="setClose">Close</button>
     </div>
-    <p class="note">Keep the screen on and this page open while listening — iPhone stops the microphone when the phone locks or you switch apps.</p>
+    <p class="note">Keep this page open on screen while listening — iPhone stops a web page's microphone when the phone locks or you switch apps. The page asks iPhone to keep the screen on; Low Power Mode can block that, so for long sessions also set Settings → Display &amp; Brightness → Auto-Lock → Never. If the mic is cut off, it restarts on its own when you come back.</p>
     <p class="note" id="costNote"></p>
   </div>
 </div>
@@ -227,6 +233,9 @@
   let secondsUsed = store.get("sl.secs", 0);
   let claudeKey  = store.get("sl.claudeKey", "") || store.get("sl.anthKey", "");
   let gistModel  = store.get("sl.gistModel", "claude-haiku-5-5");
+  let micId      = store.get("sl.micId", "");
+  let micLabel   = store.get("sl.micLabel", "");
+  let agc        = store.get("sl.agc", false);
 
   // ---------- session state ----------
   let running = false, ws = null, audioCtx = null, stream = null, node = null, source = null;
@@ -374,7 +383,8 @@
       process(inputs){ const ch = inputs[0] && inputs[0][0]; if (ch) this.port.postMessage(ch.slice(0)); return true; }
     }
     registerProcessor("grab", Grab);`;
-  let resampleBuf = [], ratio = 3, sendBuf = [], sendLen = 0;
+  // resampler state: leftover input samples and the fractional read position into them
+  let rsIn = new Float32Array(0), rsPos = 0, srcRate = TARGET_RATE, sendBuf = [], sendLen = 0;
   const HIST = TARGET_RATE * 15, hist = new Int16Array(HIST); let histPos = 0, histFill = 0;
   function keepHistory(pkt){
     for (let i = 0; i < pkt.length; i++) { hist[histPos] = pkt[i]; histPos = (histPos + 1) % HIST; }
@@ -387,18 +397,39 @@
     $("level").firstChild.style.width = pct + "%";
     $("level").classList.toggle("hot", db > -3);
   }
-  function onAudio(f32){
-    let all = f32;
-    if (resampleBuf.length) { all = new Float32Array(resampleBuf.length + f32.length); all.set(resampleBuf); all.set(f32, resampleBuf.length); }
-    const out = new Int16Array(Math.floor(all.length / ratio));
-    let o = 0, i = 0;
-    for (; i + ratio <= all.length; i += ratio) {
-      let s = 0; for (let k = 0; k < ratio; k++) s += all[i + k];
-      s = Math.max(-1, Math.min(1, s / ratio));
-      out[o++] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  // Converts whatever rate the mic runs at (48 000, 44 100, 24 000, 16 000, 8 000…) to exactly 16 000.
+  // The old version rounded the ratio to a whole number, so a 44.1 kHz mic was sent ~9% too fast and high-pitched.
+  function resample(f32){
+    const all = new Float32Array(rsIn.length + f32.length); all.set(rsIn); all.set(f32, rsIn.length);
+    const step = srcRate / TARGET_RATE;
+    const out = new Int16Array(Math.ceil(all.length / step) + 2);
+    let o = 0, pos = rsPos;
+    if (step >= 1) {
+      // downsample: average the input samples each output sample covers (simple anti-alias filter)
+      while (pos + step <= all.length) {
+        const a = Math.floor(pos), b = Math.max(a + 1, Math.floor(pos + step));
+        let s = 0; for (let k = a; k < b; k++) s += all[k];
+        s = Math.max(-1, Math.min(1, s / (b - a)));
+        out[o++] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        pos += step;
+      }
+    } else {
+      // upsample (narrowband mics): linear interpolation
+      while (pos + 1 < all.length) {
+        const a = Math.floor(pos), f = pos - a;
+        let s = all[a] + (all[a + 1] - all[a]) * f;
+        s = Math.max(-1, Math.min(1, s));
+        out[o++] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        pos += step;
+      }
     }
-    resampleBuf = Array.from(all.subarray(i));
-    sendBuf.push(out.subarray(0, o)); sendLen += o;
+    const keep = Math.min(Math.floor(pos), all.length);
+    rsIn = all.slice(keep); rsPos = pos - keep;
+    return out.subarray(0, o);
+  }
+  function onAudio(f32){
+    const out = resample(f32), o = out.length;
+    sendBuf.push(out); sendLen += o;
     if (sendLen >= TARGET_RATE / 10) {           // ~100 ms per packet
       const pkt = new Int16Array(sendLen); let p = 0;
       for (const b of sendBuf) { pkt.set(b, p); p += b.length; }
@@ -407,10 +438,17 @@
       if (ws && ws.readyState === 1) ws.send(pkt.buffer);
     }
   }
+  const BT_MIC = /airpods|bluetooth|hands-?free|headset|buds|beats|bose|jabra|sony wf|galaxy/i;
   async function startAudio(){
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: true }
-    });
+    const base = { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: basic ? true : agc };
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: micId ? Object.assign({ deviceId: { exact: micId } }, base) : base });
+    } catch (e) {
+      if (!micId) throw e;
+      // the chosen mic is unplugged or its id changed: fall back to the default mic and say so
+      divider("Couldn't open the chosen mic" + (micLabel ? " (" + micLabel + ")" : "") + " — using the default mic.");
+      stream = await navigator.mediaDevices.getUserMedia({ audio: base });
+    }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (basic) { audioCtx = new AC(); source = audioCtx.createMediaStreamSource(stream); }   // first-version audio path
     else {
@@ -418,7 +456,11 @@
       catch (e) { try { audioCtx && audioCtx.close(); } catch(_){} audioCtx = new AC(); source = audioCtx.createMediaStreamSource(stream); }
     }
     await audioCtx.resume();
-    ratio = Math.max(1, Math.round(audioCtx.sampleRate / TARGET_RATE));
+    srcRate = audioCtx.sampleRate; rsIn = new Float32Array(0); rsPos = 0;
+    audioCtx.onstatechange = () => {
+      // iPhone suspends/"interrupts" audio for calls, Siri, alarms; pick it back up when we're on screen
+      if (running && audioCtx && audioCtx.state !== "running" && document.visibilityState === "visible") audioCtx.resume().catch(() => {});
+    };
     if (audioCtx.audioWorklet) {
       const url = URL.createObjectURL(new Blob([workletSrc], { type: "application/javascript" }));
       await audioCtx.audioWorklet.addModule(url);
@@ -432,14 +474,51 @@
       source.connect(node); node.connect(audioCtx.destination);
     }
     const track = stream.getAudioTracks()[0];
-    return track ? track.label : "";
+    if (track) {
+      const mine = stream;
+      track.onended = () => {
+        if (stream !== mine || !running) return;
+        if (document.visibilityState === "visible") restartAudio("Mic was cut off — restarted");
+        else micLost = true;
+      };
+    }
+    const label = track ? track.label : "";
+    if (label && BT_MIC.test(label) && !basic)
+      divider("Heads-up: listening through an earbud/Bluetooth mic (" + label + "). It mostly hears the person wearing it. Pick the iPhone or USB mic in Settings for the table.");
+    return label;
   }
   function stopAudio(){
     try { node && node.disconnect(); } catch(e){}
     try { source && source.disconnect(); } catch(e){}
-    try { stream && stream.getTracks().forEach(t => t.stop()); } catch(e){}
-    try { audioCtx && audioCtx.close(); } catch(e){}
-    node = source = stream = audioCtx = null; resampleBuf = []; sendBuf = []; sendLen = 0;
+    try { stream && stream.getTracks().forEach(t => { t.onended = null; t.stop(); }); } catch(e){}
+    try { audioCtx && (audioCtx.onstatechange = null, audioCtx.close()); } catch(e){}
+    node = source = stream = audioCtx = null; rsIn = new Float32Array(0); rsPos = 0; sendBuf = []; sendLen = 0;
+  }
+  // restart only the microphone; keep the Soniox connection, transcript and speaker names
+  let audioRestarting = false, micLost = false;
+  async function restartAudio(reason){
+    if (audioRestarting || !running) return;
+    audioRestarting = true; micLost = false;
+    try {
+      stopAudio();
+      const label = await startAudio();
+      divider(reason + (label ? " · Mic: " + label : ""));
+      if (!ws && !reconnecting) reconnect();
+    } catch (e) {
+      divider("Couldn't restart the mic: " + (e && e.message ? e.message : e) + ". Tap Stop, then Start.");
+    } finally { audioRestarting = false; }
+  }
+  async function listMics(){
+    const sel = $("micSelect"); sel.innerHTML = "";
+    const add = (v, t) => { const o = document.createElement("option"); o.value = v; o.textContent = t; sel.appendChild(o); return o; };
+    add("", "Default (whatever iPhone picks)");
+    try {
+      const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "audioinput" && d.deviceId && d.deviceId !== "default");
+      devs.forEach((d, i) => { const name = d.label || ("Microphone " + (i + 1)); add(d.deviceId, name + (BT_MIC.test(d.label) ? "  (earbud — hears the wearer)" : "")).dataset.label = name; });
+      if (devs.length && !devs.some(d => d.label)) $("micNote").textContent = "Tap Start once and allow the mic — then the mic names show up here.";
+      if (micId && !devs.some(d => d.deviceId === micId)) add(micId, (micLabel || "Chosen mic") + " (not connected)").dataset.label = micLabel;
+    } catch (e) {}
+    sel.value = micId;
   }
 
   // ---------- hear what Soniox hears ----------
@@ -591,17 +670,34 @@
   }
 
   // ---------- keep screen awake ----------
-  async function requestWake(){ try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch(e){} }
-  function releaseWake(){ try { wakeLock && wakeLock.release(); } catch(e){} wakeLock = null; }
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && running) {
-      requestWake();
-      const tr = stream && stream.getAudioTracks()[0];
-      if (!tr || tr.readyState === "ended" || (audioCtx && audioCtx.state !== "running")) {
-        divider("Mic was paused while the screen was off — restarting.");
-        stop(); start();
-      }
-    }
+  let wakeWarned = false;
+  async function requestWake(){
+    if (!running || document.visibilityState !== "visible" || wakeLock) return;
+    if (!("wakeLock" in navigator)) { warnWake("this iPhone's Safari can't keep the screen on"); return; }
+    try {
+      const lock = await navigator.wakeLock.request("screen");
+      if (!running) { lock.release().catch(() => {}); return; }
+      wakeLock = lock;
+      // iPhone drops the lock on its own sometimes (Low Power Mode, overlays); take it back while we're listening
+      lock.addEventListener("release", () => {
+        if (wakeLock === lock) wakeLock = null;
+        if (running && document.visibilityState === "visible") setTimeout(requestWake, 1000);
+      });
+    } catch (e) { warnWake("iPhone refused to keep the screen on (Low Power Mode does this)"); }
+  }
+  function warnWake(why){
+    if (wakeWarned) return; wakeWarned = true;
+    divider("Heads-up: " + why + ". Set Settings → Display & Brightness → Auto-Lock → Never while listening.");
+  }
+  function releaseWake(){ const l = wakeLock; wakeLock = null; try { l && l.release(); } catch(e){} }
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState !== "visible" || !running) return;
+    requestWake();
+    const tr = stream && stream.getAudioTracks()[0];
+    if (audioCtx && audioCtx.state !== "running") { try { await audioCtx.resume(); } catch(e){} }
+    if (micLost || !tr || tr.readyState === "ended" || tr.muted || (audioCtx && audioCtx.state !== "running")) {
+      restartAudio("Mic was paused while the screen was off — picked back up");
+    } else if (!ws && !reconnecting) reconnect();
   });
 
   // ---------- rename (this line by default) ----------
@@ -647,7 +743,8 @@
   function paintToggle(id, on){ $(id).textContent = on ? "On" : "Off"; $(id).classList.toggle("on", on); }
   let draft = {};
   function openSettings(){
-    draft = { people, enIsMe, showLive, basic };
+    draft = { people, enIsMe, showLive, basic, agc };
+    listMics(); paintToggle("agcBtn", draft.agc);
     $("keyInput").value = apiKey; $("modelInput").value = model; $("termsInput").value = extraTerms;
     $("claudeKeyInput").value = claudeKey; $("gistModelInput").value = gistModel;
     $("notesInput").value = notes; $("myNameInput").value = myName;
@@ -662,11 +759,17 @@
   $("enMeBtn").addEventListener("click", () => { draft.enIsMe = !draft.enIsMe; paintToggle("enMeBtn", draft.enIsMe); });
   $("liveBtn").addEventListener("click", () => { draft.showLive = !draft.showLive; paintToggle("liveBtn", draft.showLive); });
   $("basicBtn").addEventListener("click", () => { draft.basic = !draft.basic; paintToggle("basicBtn", draft.basic); });
+  $("agcBtn").addEventListener("click", () => { draft.agc = !draft.agc; paintToggle("agcBtn", draft.agc); });
   $("settingsBtn").addEventListener("click", openSettings);
   $("setSave").addEventListener("click", () => {
     apiKey = $("keyInput").value.trim(); model = $("modelInput").value.trim() || "auto";
     extraTerms = $("termsInput").value.trim(); notes = $("notesInput").value.trim(); myName = $("myNameInput").value.trim() || "Allen";
     const restartNeeded = running && (draft.people !== people || draft.basic !== basic);
+    const sel = $("micSelect"), newMic = sel.value;
+    const micChanged = newMic !== micId || draft.agc !== agc;
+    micId = newMic; micLabel = newMic ? (sel.options[sel.selectedIndex].dataset.label || "") : "";
+    agc = draft.agc;
+    store.set("sl.micId", micId); store.set("sl.micLabel", micLabel); store.set("sl.agc", agc);
     people = draft.people; enIsMe = draft.enIsMe; showLive = draft.showLive; basic = draft.basic;
     store.set("sl.key", apiKey); store.set("sl.model2", model); store.set("sl.terms", extraTerms);
     store.set("sl.notes", notes); store.set("sl.myName", myName); store.set("sl.people", people);
@@ -677,6 +780,7 @@
     blocks.forEach(b => { if (!b.closed) paintWho(b); });
     $("setSheet").classList.remove("open");
     if (restartNeeded) { divider("Settings changed — restarting the session."); stop(); start(); }
+    else if (running && micChanged) restartAudio("Switched mic");
   });
   $("setClose").addEventListener("click", () => $("setSheet").classList.remove("open"));
   function setFs(v){ fontSize = Math.max(14, Math.min(34, v)); store.set("sl.fs", fontSize); applyDisplay(); }
@@ -696,6 +800,7 @@
       if (listenOn) {
         blocks.forEach(b => b.spoken = b.en.length);       // start from now
         const u = new SpeechSynthesisUtterance("Listening"); u.lang = "en-US"; speechSynthesis.speak(u);
+        divider("Listen reads the English aloud. Use earbuds (the phone speaker would be heard by the mic), and pick the iPhone or USB mic in Settings so the earbuds' own mic isn't used.");
       }
     }
   });
